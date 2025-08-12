@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // 개발 환경에서는 로컬 IP 주소를 사용
 // 실제 배포 시에는 실제 서버 URL로 변경
-const API_BASE_URL = 'http://172.30.1.72:8080/api';
+const API_BASE_URL = 'http://172.30.1.98:8080/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
