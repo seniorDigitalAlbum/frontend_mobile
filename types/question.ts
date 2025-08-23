@@ -1,6 +1,6 @@
 export interface Question {
   id: number;
-  text: string;
+  content: string;
   category?: string;
   createdAt?: string;
   updatedAt?: string;

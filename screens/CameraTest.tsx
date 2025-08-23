@@ -28,7 +28,7 @@ export default function CameraTest({ route, navigation }: Props) {
             {/* 헤더 - 질문 내용 */}
             <View className="p-6 border-b border-gray-200">
                 <Text className="text-xl font-bold text-center text-black leading-6">
-                    {questionText}
+                    카메라와 마이크를 테스트할게요.
                 </Text>
             </View>
 

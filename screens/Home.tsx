@@ -50,7 +50,7 @@ export default function Home() {
     };
 
     const handleQuestionPress = (question: Question) => {
-        navigation.navigate('CameraTest', { questionText: question.text });
+        navigation.navigate('CameraTest', { questionText: question.content });
     };
 
     if (loading) {
@@ -77,7 +77,7 @@ export default function Home() {
                         key={question.id}
                         onPress={() => handleQuestionPress(question)}
                     >
-                        {question.text}
+                        {question.content}
                     </QuestionList>
                 ))}
             </View>
