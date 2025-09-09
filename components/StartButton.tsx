@@ -6,19 +6,18 @@ interface StartButtonProps {
 }
 
 export default function StartButton({ onPress, disabled = false }: StartButtonProps) {
+    if (disabled) {
+        return null;
+    }
+
     return (
         <TouchableOpacity 
             onPress={onPress}
-            disabled={disabled}
-            className={`w-full px-8 py-4 rounded-full items-center ${
-                disabled ? 'bg-gray-300' : 'bg-purple-500'
-            }`}
-            activeOpacity={disabled ? 1 : 0.7}
+            className="w-full px-8 py-4 rounded-full items-center bg-purple-500"
+            activeOpacity={0.7}
         >
-            <Text className={`text-lg font-semibold ${
-                disabled ? 'text-gray-500' : 'text-white'
-            }`}>
-                {disabled ? "준비 중..." : "시작하기"}
+            <Text className="text-lg font-semibold text-white">
+                시작하기
             </Text>
         </TouchableOpacity>
     );

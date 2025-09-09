@@ -1,17 +1,26 @@
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import TempCamera from '../components/TempCamera';
+import HiddenCamera from '../components/HiddenCamera';
 import TempMicTest from '../components/TempMicTest';
+import AnswerMic from '../components/AnswerMic';
 import NextButton from '../components/NextButton';
 import EndChatButton from '../components/EndChatButton';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import ttsService from '../services/audio/ttsService';
+import sttService from '../services/audio/sttService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'UserAnswer'>;
 
 export default function UserAnswer({ route, navigation }: Props) {
     const { questionText } = route.params || { questionText: '질문이 없습니다.' };
     const [isMicTested, setIsMicTested] = useState(false);
+    const [hasAnswerRecording, setHasAnswerRecording] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [volume, setVolume] = useState(1.0);
+    const [isRecording, setIsRecording] = useState(false);
+    const [transcribedText, setTranscribedText] = useState<string | null>(null);
 
     const handleNext = () => {
         // AI가 새로운 질문을 하는 화면으로 이동
@@ -48,28 +57,138 @@ export default function UserAnswer({ route, navigation }: Props) {
         setIsMicTested(true);
     };
 
+    const handleAnswerRecordingComplete = async (audioUri: string, questionId: string) => {
+        console.log(`답변 녹음 완료 - 질문 ID: ${questionId}, 오디오 URI: ${audioUri}`);
+        
+        try {
+            // AnswerMic에서 녹음한 오디오를 STT로 변환
+            const sttResult = await sttService.transcribeAudioFromUri(audioUri);
+            if (sttResult && sttResult.text) {
+                setTranscribedText(sttResult.text);
+                console.log('STT 변환 결과:', sttResult.text);
+            } else {
+                console.log('STT 변환 실패');
+            }
+        } catch (error) {
+            console.error('STT 변환 중 오류:', error);
+        }
+        
+        setHasAnswerRecording(true);
+    };
+
+    const handleAnswerRecordingStart = async (questionId: string) => {
+        console.log(`답변 녹음 시작 - 질문 ID: ${questionId}`);
+        setIsRecording(true);
+    };
+
+    // TTS로 질문 읽기
+    const handlePlayQuestion = async () => {
+        if (isPlaying) {
+            await ttsService.stopAudio();
+            setIsPlaying(false);
+            return;
+        }
+
+        try {
+            setIsPlaying(true);
+            const ttsResult = await ttsService.synthesizeText(questionText);
+            
+            if (ttsResult && ttsResult.audioData) {
+                await ttsService.playAudio(ttsResult.audioData, ttsResult.format, volume);
+            } else {
+                console.error('TTS 변환 실패');
+                setIsPlaying(false);
+            }
+        } catch (error) {
+            console.error('질문 재생 실패:', error);
+            setIsPlaying(false);
+        }
+    };
+
+    // 컴포넌트 마운트 시 STT 서비스 상태 확인
+    useEffect(() => {
+        const checkSTTHealth = async () => {
+            try {
+                const isHealthy = await sttService.checkHealth();
+                console.log('STT 서비스 상태:', isHealthy ? '정상' : '오류');
+            } catch (error) {
+                console.error('STT 서비스 상태 확인 실패:', error);
+            }
+        };
+        
+        checkSTTHealth();
+        
+        return () => {
+            ttsService.destroy();
+            sttService.cleanup();
+        };
+    }, []);
+
     return (
         <SafeAreaView className="flex-1 bg-white">
-            {/* 헤더 - 질문 내용 */}
-            <View className="p-6 border-b border-gray-200">
-                <Text className="text-xl font-bold text-center text-black leading-6">
-                    {questionText}
-                </Text>
-            </View>
-
             {/* 메인 컨텐츠 */}
             <View className="flex-1 p-6">
-                {/* 카메라 화면 */}
-                <View className="mb-8">
-                    <TempCamera />
+                {/* 숨겨진 카메라 (실시간 이미지 전송) */}
+                <HiddenCamera 
+                    onFaceDetected={(imageData) => {
+                        // AI 서버로 이미지 데이터만 전송 (AI가 감정 분석)
+                        //console.log('이미지 데이터 AI 서버 전송:', imageData);
+                    }}
+                />
+
+                {/* 캐릭터와 질문 */}
+                <View className="flex-1 justify-center items-center mb-8">
+                    {/* 캐릭터 */}
+                    <TouchableOpacity 
+                        onPress={handlePlayQuestion}
+                        className="w-32 h-32 bg-blue-100 rounded-full justify-center items-center mb-6"
+                        activeOpacity={0.7}
+                    >
+                        <Text className="text-4xl">🤖</Text>
+                        {/* 재생/정지 표시 */}
+                        <View className="absolute bottom-2 right-2">
+                            <Text className="text-lg">
+                                {isPlaying ? '⏹️' : '▶️'}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
+                    
+                    {/* 말풍선 */}
+                    <View className="bg-gray-100 rounded-2xl p-4 mx-4 mb-8 relative">
+                        {/* 말풍선 꼬리 */}
+                        <View className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                            <View className="w-4 h-4 bg-gray-100 rotate-45"></View>
+                        </View>
+                        <Text className="text-lg text-center text-gray-800 leading-6">
+                            {questionText}
+                        </Text>
+                    </View>
                 </View>
 
-                {/* 마이크 테스트 */}
+                {/* 답변 녹음 */}
                 <View className="items-center mb-8">
-                    <TempMicTest 
-                        isTested={isMicTested}
-                        onTest={handleMicTest}
+                    <AnswerMic 
+                        questionId={`question-${Date.now()}`}
+                        onRecordingComplete={handleAnswerRecordingComplete}
+                        onRecordingStart={handleAnswerRecordingStart}
+                        maxDuration={10} // 10초로 단축
                     />
+                    
+                    {/* 녹음 상태 표시 */}
+                    {isRecording && (
+                        <View className="mt-4 bg-red-100 px-4 py-2 rounded-full">
+                            <Text className="text-red-600 font-medium">🎤 녹음 중...</Text>
+                        </View>
+                    )}
+                    
+                    {/* STT 변환 결과 표시 (디버깅용) */}
+                    {transcribedText && (
+                        <View className="mt-4 bg-green-100 p-3 rounded-lg max-w-sm">
+                            <Text className="text-green-800 text-sm">
+                                변환된 텍스트: {transcribedText}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* 버튼들 */}
