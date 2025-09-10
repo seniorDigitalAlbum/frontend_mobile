@@ -32,7 +32,7 @@ jobs:
           
       - name: Build web
         run: |
-          npx expo export --platform web
+          npx expo export --platform web --base-url /frontend_mobile
           
       - name: Setup Pages
         uses: actions/configure-pages@v4
