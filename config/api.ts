@@ -1,7 +1,18 @@
 // API 설정
-// 개발 시: 컴퓨터의 실제 IP 주소 사용 (예: 192.168.1.100)
-// 프로덕션 시: 실제 서버 URL 사용
-export const API_BASE_URL = 'http://172.30.1.81:8080';
+const isDevelopment = __DEV__ || process.env.NODE_ENV === 'development';
+const isWeb = typeof window !== 'undefined';
+
+export const API_BASE_URL = (() => {
+    if (isWeb) {
+        return isDevelopment 
+            ? process.env.EXPO_PUBLIC_API_BASE_URL_DEV_WEB || 'http://localhost:8080'
+            : process.env.EXPO_PUBLIC_API_BASE_URL_PROD || 'https://your-backend-domain.com';
+    } else {
+        return isDevelopment 
+            ? process.env.EXPO_PUBLIC_API_BASE_URL_DEV || 'http://172.30.1.81:8080'
+            : process.env.EXPO_PUBLIC_API_BASE_URL_PROD || 'https://your-backend-domain.com';
+    }
+})();
 
 // API 엔드포인트
 export const API_ENDPOINTS = {
@@ -46,7 +57,7 @@ export const API_ENDPOINTS = {
 export const getApiConfig = () => {
     return {
         baseUrl: API_BASE_URL,
-        timeout: 30000, // 30초
+        timeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000'),
         headers: {
             'Content-Type': 'application/json',
         },
