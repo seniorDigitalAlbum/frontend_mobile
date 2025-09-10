@@ -7,6 +7,7 @@
     <title>DearMind</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         @font-face {
             font-family: 'Ionicons';
@@ -15,6 +16,46 @@
                  url('https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/fonts/ionicons.ttf') format('truetype');
             font-weight: normal;
             font-style: normal;
+            font-display: block;
+        }
+        
+        /* React Native Web 폰트 로딩 완전 차단 */
+        @font-face {
+            font-family: 'Ionicons';
+            src: url('data:font/woff2;base64,') format('woff2');
+            font-display: block;
+        }
+        
+        /* 모든 아이콘 요소에 Ionicons 폰트 강제 적용 */
+        .ionicon, 
+        [class*="ion-"], 
+        [class*="Ionicons"],
+        i[class*="ion"],
+        [data-icon] {
+            font-family: "Ionicons" !important;
+            font-style: normal !important;
+            font-weight: normal !important;
+            font-variant: normal !important;
+            text-transform: none !important;
+            line-height: 1 !important;
+            -webkit-font-smoothing: antialiased !important;
+            -moz-osx-font-smoothing: grayscale !important;
+        }
+        
+        /* 아이콘 폰트 로딩 대기 */
+        .ionicon:before,
+        [class*="ion-"]:before,
+        [class*="Ionicons"]:before,
+        i[class*="ion"]:before {
+            font-family: "Ionicons" !important;
+            font-style: normal !important;
+            font-weight: normal !important;
+        }
+        
+        /* 폰트 로딩 실패 시 대체 아이콘 */
+        .ionicon:not([class*="ion-"]):before {
+            content: "📁" !important;
+            font-family: "Material Icons" !important;
         }
     </style>
     <script>
@@ -35,6 +76,46 @@
                 },
             },
         }
+        
+        // React Native Web 폰트 로딩 완전 차단
+        (function() {
+            // 폰트 로딩 차단
+            const originalCreateElement = document.createElement;
+            document.createElement = function(tagName) {
+                const element = originalCreateElement.call(this, tagName);
+                if (tagName.toLowerCase() === 'link') {
+                    const href = element.href || element.getAttribute('href');
+                    if (href && (href.includes('ionicons') || href.includes('font')) && !href.includes('cdn.jsdelivr.net')) {
+                        element.remove();
+                        return document.createElement('div');
+                    }
+                }
+                return element;
+            };
+            
+            // 기존 잘못된 폰트 링크 제거
+            document.addEventListener('DOMContentLoaded', function() {
+                const links = document.querySelectorAll('link[href*="ionicons"]');
+                links.forEach(link => {
+                    if (!link.href.includes('cdn.jsdelivr.net')) {
+                        link.remove();
+                    }
+                });
+            });
+            
+            // 폰트 로딩 강제 적용
+            setTimeout(function() {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .ionicon, [class*="ion-"], [class*="Ionicons"], i[class*="ion"] {
+                        font-family: "Ionicons" !important;
+                        font-style: normal !important;
+                        font-weight: normal !important;
+                    }
+                `;
+                document.head.appendChild(style);
+            }, 100);
+        })();
     </script>
     <style>
         /* 웹에서 React Native Web 스타일 보완 */
@@ -74,15 +155,6 @@
             overflow-x: hidden !important;
         }
         
-        /* 아이콘 폰트 fallback */
-        .ionicon {
-            font-family: "Ionicons" !important;
-        }
-        
-        /* 아이콘이 로드되지 않을 때 대체 텍스트 */
-        .ionicon:before {
-            content: attr(data-icon);
-        }
     </style>
 </head>
 <body>
