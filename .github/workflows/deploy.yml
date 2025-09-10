@@ -32,7 +32,12 @@ jobs:
           
       - name: Build web
         run: |
-          npx expo export --platform web --base-url /frontend_mobile
+          export EXPO_PLATFORM=web
+          npx expo export --platform web
+          
+      - name: Fix paths for GitHub Pages
+        run: |
+          sed -i 's|/_expo/static/|/frontend_mobile/_expo/static/|g' dist/index.html
           
       - name: Setup Pages
         uses: actions/configure-pages@v4
