@@ -12,10 +12,8 @@ export const API_ENDPOINTS = {
         synthesize: '/api/tts/synthesize',
     },
     // 질문 관련
-    questions: {
-        list: '/api/questions',
-        random: '/api/questions/random',
-    },
+    questions: '/api/questions',
+    question: (id: number) => `/api/questions/${id}`,
     // 대화 관련
     conversations: {
         create: '/api/conversations',
@@ -33,6 +31,15 @@ export const API_ENDPOINTS = {
         upload: '/api/media/upload',
         get: '/api/media',
     },
+    // 알림 관련
+    notifications: '/api/notifications',
+    notification: (id: string) => `/api/notifications/${id}`,
+    markNotificationAsRead: (id: string) => `/api/notifications/${id}/read`,
+    markAllNotificationsAsRead: '/api/notifications/read-all',
+    // 프로필 관련
+    profile: '/api/profile',
+    updateProfile: '/api/profile',
+    updateProfileImage: '/api/profile/image',
 };
 
 // API 설정 가져오기

@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { DiaryProvider } from './contexts/DiaryContext';
+import './global.css';
 
 import Login from './screens/Login';
 import Home from './screens/Home';

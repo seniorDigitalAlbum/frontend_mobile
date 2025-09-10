@@ -31,6 +31,10 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
     "plugins": [
       [
         "expo-camera",
