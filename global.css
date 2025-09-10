@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 웹에서 모바일 너비 강제 적용 */
+@media (min-width: 768px) {
+  #root {
+    width: 375px !important;
+    max-width: 375px !important;
+    margin: 0 auto !important;
+    background-color: white !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  body {
+    background-color: #f5f5f5 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 100vh !important;
+  }
+}
