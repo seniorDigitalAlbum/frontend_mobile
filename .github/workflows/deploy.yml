@@ -28,12 +28,10 @@ jobs:
           
       - name: Install dependencies
         run: |
-          cd frontend_mobile
           npm ci
           
       - name: Build web
         run: |
-          cd frontend_mobile
           npx expo export --platform web
           
       - name: Setup Pages
@@ -42,7 +40,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend_mobile/dist
+          path: dist
 
   deploy:
     environment:
