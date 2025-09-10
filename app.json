@@ -35,6 +35,7 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
+    "homepage": "./",
     "plugins": [
       [
         "expo-camera",
