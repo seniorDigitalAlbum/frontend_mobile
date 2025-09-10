@@ -33,8 +33,7 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro",
-      "baseUrl": "/frontend_mobile"
+      "bundler": "metro"
     },
     "plugins": [
       [
