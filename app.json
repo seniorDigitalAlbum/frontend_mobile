@@ -35,7 +35,7 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "homepage": "./",
+    "homepage": "https://seniorDigitalAlbum.github.io/frontend_mobile",
     "plugins": [
       [
         "expo-camera",
