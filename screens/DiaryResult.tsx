@@ -4,11 +4,17 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
+import { albumApiService } from '../services/api/albumApiService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
 
 export default function DiaryResult({ route }: Props) {
-    const { diary } = route.params || { diary: '일기가 생성되지 않았습니다.' };
+    const { 
+        diary, 
+        conversationId, 
+        finalEmotion = '기쁨',
+        userId = 'user123' // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+    } = route.params || { diary: '일기가 생성되지 않았습니다.' };
     const { addDiary, updateDiary, removeDiary } = useDiary();
     const navigation = useNavigation();
 
@@ -31,13 +37,21 @@ export default function DiaryResult({ route }: Props) {
         addDiary(tempDiary);
 
         try {
-            // 백엔드로 저장 (나중에 실제 API 연동)
-            console.log('백엔드로 일기 저장 중...');
-            await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 대기 시뮬레이션
+            // 앨범 생성 API 호출
+            console.log('앨범 생성 중...');
+            const album = await albumApiService.createAlbum({
+                userId,
+                conversationId: conversationId || 1, // 임시 대화 ID
+                finalEmotion,
+                diaryContent: diary
+            });
+
+            console.log('앨범 생성 완료:', album);
 
             // 저장 성공 시 임시 데이터를 실제 데이터로 교체
             const savedDiary = {
                 ...tempDiary,
+                id: album.id, // 실제 앨범 ID로 교체
                 isPending: false, // 저장 완료 상태
             };
             updateDiary(tempDiary.id, savedDiary);
@@ -52,19 +66,17 @@ export default function DiaryResult({ route }: Props) {
                         name: 'MainTabs' as never,
                         params: { 
                             screen: 'Album' as never,
-                            // 앨범에서 일기 클릭 시 DiaryResult로 이동할 수 있도록
-                            // 일기 데이터를 전역 상태에 저장해둠
                         }
                     }
                 ],
             });
         } catch (error) {
-            console.error('일기 저장 실패:', error);
+            console.error('앨범 생성 실패:', error);
             
             // 실패 시 임시 데이터 제거
             removeDiary(tempDiary.id);
             
-            // 에러 처리 (나중에 사용자에게 알림)
+            // 에러 처리
             alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
         }
     };

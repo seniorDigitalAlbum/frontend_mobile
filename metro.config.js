@@ -13,4 +13,15 @@ if (process.env.EXPO_PLATFORM === 'web') {
   config.resolver.publicPath = '/frontend_mobile/';
 }
 
+// Jest worker 에러 해결을 위한 설정
+config.transformer = {
+  ...config.transformer,
+  minifierConfig: {
+    keep_fnames: true,
+    mangle: {
+      keep_fnames: true,
+    },
+  },
+};
+
 module.exports = config;

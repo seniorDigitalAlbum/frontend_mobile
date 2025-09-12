@@ -28,11 +28,16 @@ class QuestionApiService {
 
   async getQuestions(): Promise<Question[]> {
     try {
+      console.log('API 요청 URL:', `${apiConfig.baseUrl}${API_ENDPOINTS.questions}`);
       const response = await this.request<any>(API_ENDPOINTS.questions);
-      // 백엔드 응답 구조: { status: "success", questions: Question[], count: number }
-      if (response.status === 'success' && response.questions) {
+      console.log('API 응답:', response);
+      // 백엔드 응답 구조 확인 후 처리
+      if (response.questions && Array.isArray(response.questions)) {
         return response.questions;
+      } else if (Array.isArray(response)) {
+        return response;
       } else {
+        console.error('Unexpected response format:', response);
         throw new Error('Invalid response format');
       }
     } catch (error) {
@@ -43,10 +48,45 @@ class QuestionApiService {
 
   async getQuestionById(id: number): Promise<Question | null> {
     try {
-      const response = await this.request<QuestionResponse>(API_ENDPOINTS.question(id));
-      return response.data[0] || null;
+      const response = await this.request<any>(API_ENDPOINTS.question(id));
+      // 백엔드 응답 구조: { status: "success", question: Question }
+      if (response.status === 'success' && response.question) {
+        return response.question;
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
       console.error(`Failed to fetch question ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async getQuestionCount(): Promise<number> {
+    try {
+      const response = await this.request<any>('/api/questions/count');
+      // 백엔드 응답 구조: { status: "success", count: number }
+      if (response.status === 'success' && response.count !== undefined) {
+        return response.count;
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (error) {
+      console.error('Failed to fetch question count:', error);
+      throw error;
+    }
+  }
+
+  async getRandomQuestion(): Promise<Question | null> {
+    try {
+      const response = await this.request<any>('/api/questions/random');
+      // 백엔드 응답 구조: { status: "success", question: Question }
+      if (response.status === 'success' && response.question) {
+        return response.question;
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (error) {
+      console.error('Failed to fetch random question:', error);
       throw error;
     }
   }

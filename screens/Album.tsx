@@ -1,10 +1,11 @@
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
+import { albumApiService, Album as AlbumType } from '../services/api/albumApiService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,13 +32,18 @@ const generateMockDiaries = () => {
 export default function Album() {
     const { state, setDiaries, getDiaryById } = useDiary();
     const [refreshing, setRefreshing] = useState(false);
+    const [albums, setAlbums] = useState<AlbumType[]>([]);
+    const [loading, setLoading] = useState(true);
     const navigation = useNavigation<NavigationProp>();
+    const isLoadingRef = useRef(false);
 
-    // 초기 데이터 로드
+    const userId = 'user123'; // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+
+    // 초기 데이터 로드 - 임시로 목 데이터만 사용
     useEffect(() => {
-        if (state.diaries.length === 0) {
-            setDiaries(generateMockDiaries());
-        }
+        console.log('Album 컴포넌트 마운트됨');
+        setDiaries(generateMockDiaries());
+        setLoading(false);
     }, []);
 
     const handleDiaryPress = (diary: any) => {
@@ -60,13 +66,32 @@ export default function Album() {
         }
     };
 
-    const handleRefresh = useCallback(() => {
+    const handleRefresh = useCallback(async () => {
         setRefreshing(true);
-        // 새로고침 로직 (나중에 API 연동)
-        setTimeout(() => {
+        try {
+            const userAlbums = await albumApiService.getAlbumsByUser(userId);
+            setAlbums(userAlbums);
+            
+            const diaryData = userAlbums.map(album => ({
+                id: album.id,
+                title: `${album.finalEmotion}의 하루`,
+                date: new Date(album.createdAt).toLocaleDateString('ko-KR', {
+                    month: 'short',
+                    day: 'numeric'
+                }),
+                preview: album.diaryContent.substring(0, 100) + '...',
+                imageUrl: 'https://picsum.photos/200/200?random=' + album.id,
+                content: album.diaryContent,
+                isPending: false
+            }));
+            
+            setDiaries(diaryData);
+        } catch (error) {
+            console.error('앨범 새로고침 실패:', error);
+        } finally {
             setRefreshing(false);
-        }, 1000);
-    }, []);
+        }
+    }, [userId]);
 
     const loadMoreDiaries = useCallback(() => {
         // 무한 스크롤을 위한 추가 데이터 로드 (나중에 API 연동)

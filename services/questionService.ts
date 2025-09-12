@@ -4,9 +4,13 @@ import questionApiService from './api/questionApiService';
 class QuestionService {
   async getQuestions(): Promise<Question[]> {
     try {
-      return await questionApiService.getQuestions();
+      console.log('API에서 질문을 가져오는 중...');
+      const questions = await questionApiService.getQuestions();
+      console.log('API에서 받은 질문들:', questions);
+      return questions;
     } catch (error) {
       console.error('Failed to fetch questions:', error);
+      console.log('기본 질문들을 사용합니다.');
       // 에러 발생 시 기본 질문들 반환
       return this.getDefaultQuestions();
     }

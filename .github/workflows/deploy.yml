@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ]  # 원하는 브랜치명으로 변경
+    branches: [ main ] 
   workflow_dispatch:
 
 permissions:

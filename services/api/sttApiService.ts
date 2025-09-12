@@ -30,6 +30,58 @@ class STTApiService {
     }
   }
 
+  async transcribeAudio(audioData: string): Promise<STTResponse | null> {
+    try {
+      console.log('STT API 요청 시작, 오디오 데이터 길이:', audioData.length);
+      
+      const response = await fetch(`${this.baseUrl}/transcribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          audioData: audioData
+        }),
+      });
+
+      console.log('STT API 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('STT API 오류 응답:', errorText);
+        return {
+          text: '',
+          language: 'ko',
+          confidence: 0,
+          duration: 0,
+          status: 'error',
+          error: `HTTP ${response.status}: ${errorText}`
+        };
+      }
+
+      const result = await response.json();
+      console.log('STT API 성공 응답:', result);
+      
+      return {
+        text: result.text || '',
+        language: result.language || 'ko',
+        confidence: result.confidence || 0,
+        duration: result.duration || 0,
+        status: result.status || 'success'
+      };
+    } catch (error) {
+      console.error('STT API 요청 실패:', error);
+      return {
+        text: '',
+        language: 'ko',
+        confidence: 0,
+        duration: 0,
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
   async transcribeRealtime(audioData: string): Promise<STTResponse | null> {
     try {
       console.log('STT API 요청 시작, 오디오 데이터 길이:', audioData.length);

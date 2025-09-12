@@ -26,6 +26,10 @@ export default function Chat({ route, navigation }: Props) {
         }
     ];
 
+    // 대화 세션 정보 추출
+    const conversationId = route.params?.conversationId;
+    const userId = 'user123'; // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+
     const handleGenerateDiary = async () => {
         setIsGenerating(true);
         
@@ -47,7 +51,12 @@ export default function Chat({ route, navigation }: Props) {
 
 내일도 이런 즐거운 일들이 가득했으면 좋겠습니다.`;
             
-            navigation.navigate('DiaryResult', { diary: generatedDiary });
+            navigation.navigate('DiaryResult', { 
+                diary: generatedDiary,
+                conversationId,
+                finalEmotion: '기쁨', // 임시 감정, 나중에 실제 감정 분석 결과로 교체
+                userId
+            });
             
         } catch (error) {
             console.error('일기 생성 실패:', error);

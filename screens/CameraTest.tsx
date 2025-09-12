@@ -4,21 +4,40 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import TempCamera from '../components/TempCamera';
 import TempMicTest from '../components/TempMicTest';
+import conversationApiService from '../services/api/conversationApiService';
+import microphoneApiService from '../services/api/microphoneApiService';
 import StartButton from '../components/StartButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CameraTest'>;
 
 export default function CameraTest({ route, navigation }: Props) {
-    const { questionText } = route.params || { questionText: '질문이 없습니다.' };
+    const { 
+        questionText, 
+        questionId, 
+        conversationId, 
+        cameraSessionId, 
+        microphoneSessionId 
+    } = route.params || { questionText: '질문이 없습니다.' };
     const [isMicTested, setIsMicTested] = useState(false);
 
     const handleStart = () => {
-        // AIChat 화면으로 이동
-        navigation.navigate('AIChat', { questionText });
+        // ConversationFlow로 돌아가서 다음 단계 진행
+        navigation.goBack();
     };
 
-    const handleMicTest = () => {
-        setIsMicTested(true);
+    const handleMicTest = async () => {
+        try {
+            // 마이크 세션 상태를 ACTIVE로 업데이트
+            if (microphoneSessionId) {
+                await microphoneApiService.updateSessionStatus(microphoneSessionId, 'ACTIVE');
+                console.log('마이크 세션 상태가 ACTIVE로 업데이트됨');
+            }
+            setIsMicTested(true);
+        } catch (error) {
+            console.error('마이크 세션 상태 업데이트 실패:', error);
+            // 에러가 발생해도 테스트는 완료로 처리
+            setIsMicTested(true);
+        }
     };
 
     const canStart = isMicTested;

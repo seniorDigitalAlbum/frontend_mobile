@@ -134,6 +134,58 @@ class STTService {
     }
   }
 
+  async transcribeAudio(audioData: any): Promise<STTResult | null> {
+    try {
+      console.log('STT 변환 시작');
+      console.log('원본 오디오 데이터:', audioData);
+      
+      // 오디오 데이터를 Base64로 변환
+      const base64Data = await this.convertAudioDataToBase64(audioData);
+      if (!base64Data) {
+        console.error('오디오 데이터를 Base64로 변환할 수 없습니다.');
+        return {
+          text: '',
+          language: 'ko',
+          confidence: 0,
+          duration: 0,
+          status: 'error',
+          error: '오디오 데이터 변환 실패'
+        };
+      }
+
+      console.log('Base64 변환 완료, 데이터 길이:', base64Data.length);
+      
+      // Base64 데이터가 너무 작으면 오디오가 제대로 녹음되지 않았을 가능성
+      if (base64Data.length < 100) {
+        console.warn('오디오 데이터가 너무 작습니다. 녹음이 제대로 되지 않았을 수 있습니다.');
+        return {
+          text: '',
+          language: 'ko',
+          confidence: 0,
+          duration: 0,
+          status: 'error',
+          error: '오디오 데이터가 너무 작습니다'
+        };
+      }
+      
+      // STT API 호출
+      const result = await sttApiService.transcribeAudio(base64Data);
+      console.log('STT 변환 결과:', result);
+      
+      return result;
+    } catch (error) {
+      console.error('STT 변환 실패:', error);
+      return {
+        text: '',
+        language: 'ko',
+        confidence: 0,
+        duration: 0,
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
   async transcribeAudioFromUri(audioUri: string): Promise<STTResult | null> {
     try {
       console.log('오디오 URI에서 STT 변환 시작:', audioUri);
@@ -179,6 +231,75 @@ class STTService {
       console.error('Base64 변환 실패:', error);
       return null;
     }
+  }
+
+  private async convertAudioDataToBase64(audioData: any): Promise<string | null> {
+    try {
+      console.log('오디오 데이터 타입:', typeof audioData);
+      console.log('오디오 데이터:', audioData);
+      
+      // audioData가 이미 Base64 문자열인 경우
+      if (typeof audioData === 'string') {
+        // Base64 문자열인지 확인하고 정리
+        if (audioData.includes(',')) {
+          // data:audio/wav;base64, 형태인 경우
+          return audioData.split(',')[1];
+        }
+        // 이미 순수 Base64인 경우
+        return audioData;
+      }
+      
+      // audioData가 ArrayBuffer인 경우
+      if (audioData instanceof ArrayBuffer) {
+        const bytes = new Uint8Array(audioData);
+        // React Native에서 Base64 인코딩
+        const base64 = this.arrayBufferToBase64(bytes);
+        return base64;
+      }
+      
+      // audioData가 Blob인 경우
+      if (audioData instanceof Blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // data:audio/wav;base64, 부분 제거
+            const base64 = result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(audioData);
+        });
+      }
+      
+      console.error('지원하지 않는 오디오 데이터 타입:', typeof audioData);
+      return null;
+    } catch (error) {
+      console.error('오디오 데이터 Base64 변환 실패:', error);
+      return null;
+    }
+  }
+
+  private arrayBufferToBase64(buffer: Uint8Array): string {
+    // React Native에서 Base64 인코딩을 위한 간단한 방법
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    let result = '';
+    let i = 0;
+    
+    while (i < buffer.length) {
+      const a = buffer[i++];
+      const b = i < buffer.length ? buffer[i++] : 0;
+      const c = i < buffer.length ? buffer[i++] : 0;
+      
+      const bitmap = (a << 16) | (b << 8) | c;
+      
+      result += chars.charAt((bitmap >> 18) & 63);
+      result += chars.charAt((bitmap >> 12) & 63);
+      result += i - 2 < buffer.length ? chars.charAt((bitmap >> 6) & 63) : '=';
+      result += i - 1 < buffer.length ? chars.charAt(bitmap & 63) : '=';
+    }
+    
+    return result;
   }
 
   isCurrentlyRecording(): boolean {

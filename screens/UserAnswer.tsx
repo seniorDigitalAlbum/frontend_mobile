@@ -1,5 +1,4 @@
 import { View, Text, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import HiddenCamera from '../components/HiddenCamera';
@@ -10,11 +9,19 @@ import EndChatButton from '../components/EndChatButton';
 import { useState, useEffect } from 'react';
 import ttsService from '../services/audio/ttsService';
 import sttService from '../services/audio/sttService';
+import conversationApiService from '../services/api/conversationApiService';
+import microphoneApiService from '../services/api/microphoneApiService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'UserAnswer'>;
 
 export default function UserAnswer({ route, navigation }: Props) {
-    const { questionText } = route.params || { questionText: '질문이 없습니다.' };
+    const { 
+        questionText, 
+        questionId, 
+        conversationId, 
+        cameraSessionId, 
+        microphoneSessionId 
+    } = route.params || { questionText: '질문이 없습니다.' };
     const [isMicTested, setIsMicTested] = useState(false);
     const [hasAnswerRecording, setHasAnswerRecording] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -24,10 +31,51 @@ export default function UserAnswer({ route, navigation }: Props) {
 
     const handleNext = () => {
         // AI가 새로운 질문을 하는 화면으로 이동
-        navigation.navigate('AIChat', { questionText: '새로운 질문입니다.' });
+        navigation.navigate('AIChat', { 
+            questionText: '새로운 질문입니다.',
+            questionId,
+            conversationId,
+            cameraSessionId,
+            microphoneSessionId
+        });
     };
 
-    const handleEndChat = () => {
+    const handleEndChat = async () => {
+        // 발화 종료 API 호출
+        if (microphoneSessionId && cameraSessionId) {
+            try {
+                const userId = 'user-123'; // 실제로는 로그인된 사용자 ID 사용
+                const speechEndResult = await microphoneApiService.endSpeech(
+                    microphoneSessionId,
+                    cameraSessionId,
+                    userId
+                );
+                console.log('발화 종료됨:', speechEndResult);
+            } catch (error) {
+                console.error('발화 종료 실패:', error);
+            }
+        }
+        
+        // 마이크 세션 종료
+        if (microphoneSessionId) {
+            try {
+                await microphoneApiService.endSession(microphoneSessionId);
+                console.log('마이크 세션 종료됨:', microphoneSessionId);
+            } catch (error) {
+                console.error('마이크 세션 종료 실패:', error);
+            }
+        }
+        
+        // 대화 세션 종료
+        if (conversationId) {
+            try {
+                await conversationApiService.endConversation(conversationId);
+                console.log('대화 세션 종료됨:', conversationId);
+            } catch (error) {
+                console.error('대화 세션 종료 실패:', error);
+            }
+        }
+        
         // 채팅 화면으로 이동하면서 대화 내용 전달
         navigation.navigate('Chat', { 
             chatHistory: [
@@ -43,7 +91,7 @@ export default function UserAnswer({ route, navigation }: Props) {
                 {
                     id: 2,
                     type: 'user',
-                    message: '사용자의 답변 내용입니다.',
+                    message: transcribedText || '사용자의 답변 내용입니다.',
                     timestamp: new Date().toLocaleTimeString('ko-KR', { 
                         hour: '2-digit', 
                         minute: '2-digit' 
@@ -61,11 +109,27 @@ export default function UserAnswer({ route, navigation }: Props) {
         console.log(`답변 녹음 완료 - 질문 ID: ${questionId}, 오디오 URI: ${audioUri}`);
         
         try {
+            // 마이크 세션 상태를 RECORDING으로 업데이트
+            if (microphoneSessionId) {
+                await microphoneApiService.updateSessionStatus(microphoneSessionId, 'RECORDING');
+                console.log('마이크 세션 상태가 RECORDING으로 업데이트됨');
+            }
+            
             // AnswerMic에서 녹음한 오디오를 STT로 변환
             const sttResult = await sttService.transcribeAudioFromUri(audioUri);
             if (sttResult && sttResult.text) {
                 setTranscribedText(sttResult.text);
                 console.log('STT 변환 결과:', sttResult.text);
+                
+                // 사용자 답변 메시지 저장
+                if (conversationId && sttResult.text) {
+                    try {
+                        await conversationApiService.saveUserMessage(conversationId, sttResult.text);
+                        console.log('사용자 답변 메시지 저장됨:', sttResult.text);
+                    } catch (error) {
+                        console.error('사용자 답변 메시지 저장 실패:', error);
+                    }
+                }
             } else {
                 console.log('STT 변환 실패');
             }
@@ -168,7 +232,8 @@ export default function UserAnswer({ route, navigation }: Props) {
                 {/* 답변 녹음 */}
                 <View className="items-center mb-8">
                     <AnswerMic 
-                        questionId={`question-${Date.now()}`}
+                        questionId={questionId || `question-${Date.now()}`}
+                        microphoneSessionId={microphoneSessionId}
                         onRecordingComplete={handleAnswerRecordingComplete}
                         onRecordingStart={handleAnswerRecordingStart}
                         maxDuration={10} // 10초로 단축

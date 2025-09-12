@@ -2,16 +2,19 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import microphoneApiService from '../services/api/microphoneApiService';
 
 interface AnswerMicProps {
     questionId: string;
+    microphoneSessionId?: string;
     onRecordingComplete?: (audioUri: string, questionId: string) => void;
     onRecordingStart?: (questionId: string) => void;
     maxDuration?: number; // 최대 녹음 시간 (초)
 }
 
 export default function AnswerMic({ 
-    questionId, 
+    questionId,
+    microphoneSessionId,
     onRecordingComplete, 
     onRecordingStart,
     maxDuration = 60 
@@ -80,6 +83,16 @@ export default function AnswerMic({
             setIsRecording(true);
             setRecordingDuration(0);
 
+            // 마이크 세션 상태를 RECORDING으로 업데이트
+            if (microphoneSessionId) {
+                try {
+                    await microphoneApiService.updateSessionStatus(microphoneSessionId, 'RECORDING');
+                    console.log('마이크 세션 상태가 RECORDING으로 업데이트됨');
+                } catch (error) {
+                    console.error('마이크 세션 상태 업데이트 실패:', error);
+                }
+            }
+            
             // 녹음 시작 콜백
             if (onRecordingStart) {
                 onRecordingStart(questionId);
@@ -135,6 +148,16 @@ export default function AnswerMic({
             if (durationRef.current) {
                 clearInterval(durationRef.current);
                 durationRef.current = null;
+            }
+
+            // 마이크 세션 상태를 STOPPED으로 업데이트
+            if (microphoneSessionId) {
+                try {
+                    await microphoneApiService.updateSessionStatus(microphoneSessionId, 'STOPPED');
+                    console.log('마이크 세션 상태가 STOPPED으로 업데이트됨');
+                } catch (error) {
+                    console.error('마이크 세션 상태 업데이트 실패:', error);
+                }
             }
 
             // 녹음 완료 콜백

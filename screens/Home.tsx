@@ -7,6 +7,8 @@ import AlbumHero from '../components/AlbumHero';
 import QuestionList from '../components/QuestionList';
 import questionService from '../services/questionService';
 import { Question } from '../types/question';
+import conversationApiService from '../services/api/conversationApiService';
+import microphoneApiService from '../services/api/microphoneApiService';
 
 export default function Home() {
     const navigation: any = useNavigation();
@@ -49,8 +51,36 @@ export default function Home() {
         }
     };
 
-    const handleQuestionPress = (question: Question) => {
-        navigation.navigate('CameraTest', { questionText: question.content });
+    const handleQuestionPress = async (question: Question) => {
+        try {
+            // A-2: 사용자 질문 선택
+            const userId = 'user-123'; // 실제로는 로그인된 사용자 ID 사용
+            
+            // 대화 세션 생성
+            const conversation = await conversationApiService.createConversation({
+                userId,
+                questionId: question.id
+            });
+            
+            console.log('대화 세션 생성됨:', conversation);
+            
+            // 새로운 대화 플로우로 이동
+            navigation.navigate('ConversationFlow', { 
+                questionText: question.content,
+                questionId: question.id,
+                conversationId: conversation.id,
+                userId
+            });
+        } catch (error) {
+            console.error('대화 세션 생성 실패:', error);
+            // 에러가 발생해도 기본 흐름은 진행
+            navigation.navigate('ConversationFlow', { 
+                questionText: question.content,
+                questionId: question.id,
+                conversationId: `conv-${Date.now()}`,
+                userId: 'user-123'
+            });
+        }
     };
 
     if (loading) {
@@ -63,23 +93,44 @@ export default function Home() {
 
     return (
         <ScrollView className="flex-1 bg-white">
+            {/* 앨범 표지 */}
             <AlbumHero 
                 imageUrl="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop"
                 onPress={() => navigation.navigate('Album')}
             />
+            {/* 오늘의 질문 */}
             <View className="flex-1 justify-start items-start mt-4 ml-4">
                 <Text className="text-2xl font-bold">오늘의 질문</Text>
-                <Text className="mt-2 opacity-90">질문을 눌러 하나씩 답해보세요</Text>
+                <Text className="mt-2 opacity-90">질문을 눌러 하나씩 답해보세요.</Text>
             </View>
-            <View className="flex-1 m-4">
-                {questions.map((question) => (
-                    <QuestionList 
-                        key={question.id}
-                        onPress={() => handleQuestionPress(question)}
-                    >
-                        {question.content}
-                    </QuestionList>
-                ))}
+            {/* 질문 리스트 */}
+            <View className="m-4">
+                {questions && questions.length > 0 ? (
+                    questions.map((question) => {
+                        // question이 유효한지 확인
+                        if (!question || typeof question !== 'object') {
+                            return null;
+                        }
+                        
+                        // content가 유효한 문자열인지 확인
+                        const questionText = question.content && typeof question.content === 'string' 
+                            ? question.content 
+                            : '질문 내용이 없습니다.';
+                        
+                        return (
+                            <QuestionList 
+                                key={question.id || Math.random()}
+                                onPress={() => handleQuestionPress(question)}
+                            >
+                                {questionText}
+                            </QuestionList>
+                        );
+                    })
+                ) : (
+                    <View className="items-center py-8">
+                        <Text className="text-gray-500">질문을 불러오는 중...</Text>
+                    </View>
+                )}
             </View>
         </ScrollView >
     );
