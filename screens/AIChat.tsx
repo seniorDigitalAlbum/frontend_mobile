@@ -1,3 +1,5 @@
+// 사용되지 않는 화면 - Conversation.tsx에서 AIQuestionSection 컴포넌트로 대체됨
+/*
 import { View, Text, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
@@ -73,14 +75,14 @@ export default function AIChat({ route, navigation }: Props) {
             console.error('발화 시작 실패:', error);
         }
         
-        // 사용자 답변 화면으로 이동
-        navigation.navigate('UserAnswer', { 
-            questionText,
-            questionId,
-            conversationId,
-            cameraSessionId,
-            microphoneSessionId
-        });
+        // 사용자 답변 화면으로 이동 (사용되지 않는 화면)
+        // navigation.navigate('UserAnswer', { 
+        //     questionText,
+        //     questionId,
+        //     conversationId,
+        //     cameraSessionId,
+        //     microphoneSessionId
+        // });
     };
 
     return (
@@ -111,4 +113,5 @@ export default function AIChat({ route, navigation }: Props) {
             </View>
         </SafeAreaView>
     );
-} 
+}
+*/ 

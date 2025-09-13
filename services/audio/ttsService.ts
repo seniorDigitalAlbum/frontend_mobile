@@ -116,6 +116,12 @@ class TTSService {
      */
     async synthesizeText(text: string): Promise<TTSResponse | null> {
         try {
+            // 텍스트 유효성 검사
+            if (!text || typeof text !== 'string' || text.trim().length === 0) {
+                console.error('TTS 변환 실패: 유효하지 않은 텍스트:', text);
+                return null;
+            }
+
             // TTS 서버 상태 먼저 확인
             const isHealthy = await this.checkHealth();
             if (!isHealthy) {

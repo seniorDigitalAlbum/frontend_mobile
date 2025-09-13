@@ -26,10 +26,12 @@ import Album from './screens/Album';
 import MyPage from './screens/MyPage';
 import CameraTest from './screens/CameraTest';
 import Notification from './screens/Notification';
-import AIChat from './screens/AIChat';
-import UserAnswer from './screens/UserAnswer';
+// import AIChat from './screens/AIChat'; // 사용되지 않는 화면
+// import UserAnswer from './screens/UserAnswer'; // 사용되지 않는 화면
+import Conversation from './screens/Conversation';
 import Chat from './screens/Chat';
 import DiaryResult from './screens/DiaryResult';
+import DiaryLoading from './components/DiaryLoading';
 import ConversationFlow from './components/ConversationFlow';
 
 /**
@@ -53,19 +55,27 @@ export type RootStackParamList = {
     userId: string;                    // 사용자 ID
   };
   Notification: undefined;
-  AIChat: { 
+  // AIChat: { // 사용되지 않는 화면
+  //   questionText: string;
+  //   questionId?: number;
+  //   conversationId?: number;
+  //   cameraSessionId?: string;
+  //   microphoneSessionId?: string;
+  // };
+  // UserAnswer: { // 사용되지 않는 화면
+  //   questionText: string;
+  //   questionId?: number;
+  //   conversationId?: number;
+  //   cameraSessionId?: string;
+  //   microphoneSessionId?: string;
+  // };
+  Conversation: { 
     questionText: string;
     questionId?: number;
     conversationId?: number;
     cameraSessionId?: string;
     microphoneSessionId?: string;
-  };
-  UserAnswer: { 
-    questionText: string;
-    questionId?: number;
-    conversationId?: number;
-    cameraSessionId?: string;
-    microphoneSessionId?: string;
+    userId?: string;
   };
   Chat: { 
     chatHistory?: Array<{ id: number; type: string; message: string; timestamp: string }>;
@@ -76,7 +86,16 @@ export type RootStackParamList = {
     conversationId?: number;
     finalEmotion?: string;
     userId?: string;
+    musicRecommendations?: Array<{
+      id: number;
+      title: string;
+      artist: string;
+      mood: string;
+      youtubeLink: string;
+      youtubeVideoId: string;
+    }>;
   };
+  DiaryLoading: undefined;
 };
 
 // 네비게이터 인스턴스 생성
@@ -169,20 +188,26 @@ export default function App() {
             {/* 카메라 테스트 화면 */}
             <Stack.Screen name="CameraTest" component={CameraTest} />
             
+            {/* 통합 대화 화면 */}
+            <Stack.Screen name="Conversation" component={Conversation} />
+            
             {/* 알림 화면 */}
             <Stack.Screen name="Notification" component={Notification} />
             
             {/* AI 채팅 화면 */}
-            <Stack.Screen name="AIChat" component={AIChat} />
+            {/* <Stack.Screen name="AIChat" component={AIChat} /> 사용되지 않는 화면 */}
             
             {/* 사용자 답변 화면 */}
-            <Stack.Screen name="UserAnswer" component={UserAnswer} />
+            {/* <Stack.Screen name="UserAnswer" component={UserAnswer} /> 사용되지 않는 화면 */}
             
             {/* 채팅 화면 */}
             <Stack.Screen name="Chat" component={Chat} />
             
             {/* 일기 결과 화면 */}
             <Stack.Screen name="DiaryResult" component={DiaryResult} />
+            
+            {/* 일기 생성 로딩 화면 */}
+            <Stack.Screen name="DiaryLoading" component={DiaryLoading} />
           </Stack.Navigator>
         </NavigationContainer>
       </ConversationProvider>

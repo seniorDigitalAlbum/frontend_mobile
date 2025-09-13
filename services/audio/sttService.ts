@@ -233,7 +233,7 @@ class STTService {
     }
   }
 
-  private async convertAudioDataToBase64(audioData: any): Promise<string | null> {
+  async convertAudioDataToBase64(audioData: any): Promise<string | null> {
     try {
       console.log('오디오 데이터 타입:', typeof audioData);
       console.log('오디오 데이터:', audioData);

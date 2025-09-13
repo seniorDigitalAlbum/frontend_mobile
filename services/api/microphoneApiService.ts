@@ -30,6 +30,7 @@ export interface SpeechStartRequest {
   microphoneSessionId: string;
   cameraSessionId: string;
   userId: string;
+  conversationId: number;
 }
 
 export interface SpeechStartResponse {
@@ -39,6 +40,28 @@ export interface SpeechStartResponse {
   cameraSessionId: string;
   userId: string;
   timestamp: string;
+}
+
+export interface SpeechEndRequest {
+  microphoneSessionId: string;
+  cameraSessionId: string;
+  userId: string;
+  audioData: string;
+}
+
+export interface SpeechEndWithQueryRequest {
+  microphoneSessionId: string;
+  cameraSessionId: string;
+  userId: string;
+  audioData: string;
+}
+
+export interface SpeechEndResponse {
+  status: string;
+  message: string;
+  conversationMessageId: number;
+  aiResponse: string;
+  audioBase64: string;
 }
 
 class MicrophoneApiService {
@@ -202,22 +225,38 @@ class MicrophoneApiService {
   }
 
   // 발화 종료
-  async endSpeech(microphoneSessionId: string, cameraSessionId: string, userId: string): Promise<boolean> {
+  async endSpeech(request: SpeechEndRequest): Promise<SpeechEndResponse | null> {
     try {
-      const params = new URLSearchParams({
-        microphoneSessionId,
-        cameraSessionId,
-        userId,
-      });
-
-      const response = await this.request<{ status: string; message: string }>(`/speech/end?${params.toString()}`, {
+      const response = await this.request<SpeechEndResponse>('/speech/end', {
         method: 'POST',
+        body: JSON.stringify(request),
       });
 
-      return response.status === 'success';
+      return response;
     } catch (error) {
       console.error('Failed to end speech:', error);
-      return false;
+      return null;
+    }
+  }
+
+  // 발화 종료 (Query 파라미터 사용)
+  async endSpeechWithQuery(request: SpeechEndWithQueryRequest): Promise<SpeechEndResponse | null> {
+    try {
+      const params = new URLSearchParams({
+        microphoneSessionId: request.microphoneSessionId,
+        cameraSessionId: request.cameraSessionId,
+        userId: request.userId,
+      });
+
+      const response = await this.request<SpeechEndResponse>(`/speech/end?${params.toString()}`, {
+        method: 'POST',
+        body: JSON.stringify({ audioData: request.audioData }),
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Failed to end speech with query:', error);
+      return null;
     }
   }
 

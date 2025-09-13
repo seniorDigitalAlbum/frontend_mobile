@@ -34,6 +34,52 @@ export interface CreateConversationRequest {
   microphoneSessionId: string;
 }
 
+export interface StartConversationRequest {
+  userId: string;
+  questionId: number;
+}
+
+export interface StartConversationResponse {
+  conversationId: number;
+  cameraSessionId: string;
+  microphoneSessionId: string;
+  status: string;
+  question: {
+    id: number;
+    content: string;
+  };
+  message: string;
+}
+
+export interface ProcessingStatusResponse {
+  status: string;
+  message: string;
+  isProcessing: boolean;
+  progress: number;
+  estimatedTimeRemaining?: number;
+}
+
+export interface DiaryResponse {
+  conversationId: number;
+  summary: string;
+  diary: string;
+  emotionSummary: {
+    dominantEmotion: string;
+    averageConfidence: number;
+    analyzedMessageCount: number;
+    emotionCounts: Record<string, number>;
+  };
+  musicRecommendations: Array<{
+    id: number;
+    title: string;
+    artist: string;
+    mood: string;
+    youtubeLink: string;
+    youtubeVideoId: string;
+  }>;
+  message: string;
+}
+
 export interface SaveMessageRequest {
   content: string;
 }
@@ -58,6 +104,21 @@ class ConversationApiService {
       return await response.json();
     } catch (error) {
       console.error('Conversation API request failed:', error);
+      throw error;
+    }
+  }
+
+  // 대화 세션 시작
+  async startConversation(request: StartConversationRequest): Promise<StartConversationResponse> {
+    try {
+      const response = await this.request<StartConversationResponse>('/start', {
+        method: 'POST',
+        body: JSON.stringify(request),
+      });
+
+      return response;
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
       throw error;
     }
   }
@@ -145,14 +206,36 @@ class ConversationApiService {
   }
 
   // 대화 세션 종료
-  async endConversation(conversationId: number): Promise<Conversation | null> {
+  async endConversation(conversationId: number): Promise<{ status: string; message: string } | null> {
     try {
-      const response = await this.request<Conversation>(`/${conversationId}/end`, {
+      const response = await this.request<{ status: string; message: string }>(`/${conversationId}/end`, {
         method: 'PUT',
       });
       return response;
     } catch (error) {
       console.error(`Failed to end conversation ${conversationId}:`, error);
+      return null;
+    }
+  }
+
+  // 대화 처리 상태 확인
+  async getProcessingStatus(conversationId: number): Promise<ProcessingStatusResponse | null> {
+    try {
+      const response = await this.request<ProcessingStatusResponse>(`/${conversationId}/processing-status`);
+      return response;
+    } catch (error) {
+      console.error(`Failed to get processing status for conversation ${conversationId}:`, error);
+      return null;
+    }
+  }
+
+  // 생성된 일기 조회
+  async getDiary(conversationId: number): Promise<DiaryResponse | null> {
+    try {
+      const response = await this.request<DiaryResponse>(`/${conversationId}/diary`);
+      return response;
+    } catch (error) {
+      console.error(`Failed to get diary for conversation ${conversationId}:`, error);
       return null;
     }
   }

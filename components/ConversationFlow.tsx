@@ -27,6 +27,7 @@ import { useConversation, conversationActions } from '../contexts/ConversationCo
 import { ConversationFlowProps } from '../types/conversation';
 import { ERROR_MESSAGES, TIMING } from '../constants/conversation';
 import { showErrorAlert, formatLogMessage } from '../utils/conversationUtils';
+import conversationApiService from '../services/api/conversationApiService';
 
 /**
  * ConversationFlow 컴포넌트 메인 함수
@@ -63,6 +64,16 @@ export default function ConversationFlow({
    */
   useEffect(() => {
     switch (state.currentStep) {
+      case 'camera_test':
+        // CameraTest 화면으로 네비게이션
+        navigation.navigate('CameraTest', {
+          questionText: state.conversationInfo.questionText,
+          questionId: state.conversationInfo.questionId,
+          conversationId: state.conversationInfo.conversationId,
+          cameraSessionId: state.sessionIds.cameraSessionId,
+          microphoneSessionId: state.sessionIds.microphoneSessionId
+        });
+        break;
       case 'tts_playback':
         handleTTSPlayback();
         break;
@@ -73,19 +84,47 @@ export default function ConversationFlow({
 
   /**
    * 화면 포커스 시 카메라 테스트 완료 확인
-   * CameraTest 화면에서 돌아왔을 때 다음 단계로 진행
+   * CameraTest 화면에서 돌아왔을 때 대화 세션 생성 후 다음 단계로 진행
    */
   useFocusEffect(
     React.useCallback(() => {
       // 포커스 시 카메라 테스트 완료 처리
       if (state.currentStep === 'camera_test') {
-        setTimeout(() => {
-          dispatch(conversationActions.setCameraTestResult('success'));
-          dispatch(conversationActions.setMicrophoneTestResult('success'));
-          dispatch(conversationActions.setStep('tts_playback'));
+        setTimeout(async () => {
+          try {
+                 // 대화 세션 시작 API 호출
+                 const userId = '1'; // 하드코딩된 사용자 ID
+                 const startResponse = await conversationApiService.startConversation({
+                   userId,
+                   questionId: state.conversationInfo.questionId || 5
+                 });
+
+                 console.log('대화 세션 시작됨:', startResponse);
+
+                 // 세션 ID를 Context에 저장
+                 dispatch(conversationActions.setSessionIds({
+                   cameraSessionId: startResponse.cameraSessionId,
+                   microphoneSessionId: startResponse.microphoneSessionId
+                 }));
+
+                 // 대화 정보 업데이트 (initialize 액션 사용)
+                 dispatch(conversationActions.initialize({
+                   ...state.conversationInfo,
+                   conversationId: startResponse.conversationId.toString(),
+                   questionText: startResponse.question.content,
+                   questionId: startResponse.question.id
+                 }));
+
+            dispatch(conversationActions.setCameraTestResult('success'));
+            dispatch(conversationActions.setMicrophoneTestResult('success'));
+            dispatch(conversationActions.setStep('tts_playback'));
+          } catch (error) {
+            console.error('대화 세션 시작 실패:', error);
+            dispatch(conversationActions.setError('대화 세션을 시작할 수 없습니다.'));
+          }
         }, 100);
       }
-    }, [state.currentStep, dispatch])
+    }, [state.currentStep, dispatch, state.conversationInfo])
   );
 
   /**
@@ -171,20 +210,22 @@ export default function ConversationFlow({
   };
 
   /**
-   * C-1: AIChat 화면으로 이동
-   * TTS 재생은 AIChat 화면에서 처리합니다.
+   * C-1: Conversation 화면으로 이동
+   * TTS 재생은 Conversation 화면에서 처리합니다.
    */
   const handleTTSPlayback = async () => {
     try {
-      console.log(formatLogMessage('C-1', 'AIChat 화면으로 이동'));
+      console.log(formatLogMessage('C-1', 'Conversation 화면으로 이동'));
       dispatch(conversationActions.setProcessing(true));
       
-      // questionText 확인
+      // questionText 확인 및 안전한 기본값 설정
       const textToPlay = state.conversationInfo.questionText || questionText || '안녕하세요, 오늘 하루는 어떠셨나요?';
-      console.log('AIChat으로 전달할 텍스트:', textToPlay);
+      console.log('Conversation으로 전달할 텍스트:', textToPlay);
+      console.log('원본 questionText:', questionText);
+      console.log('Context questionText:', state.conversationInfo.questionText);
       
-      // 바로 AIChat 화면으로 이동
-      navigation.navigate('AIChat', {
+      // 통합 대화 화면으로 이동
+      navigation.navigate('Conversation', {
         questionText: textToPlay,
         questionId: state.conversationInfo.questionId,
         conversationId: state.conversationInfo.conversationId,
@@ -193,7 +234,7 @@ export default function ConversationFlow({
       });
       dispatch(conversationActions.setProcessing(false));
     } catch (error) {
-      console.error(formatLogMessage('C-1', 'AIChat 이동 실패'), error);
+      console.error(formatLogMessage('C-1', 'Conversation 이동 실패'), error);
       dispatch(conversationActions.setProcessing(false));
     }
   };
@@ -342,15 +383,12 @@ export default function ConversationFlow({
 
       // B-2: 카메라 프리뷰 테스트 단계
       case 'camera_test':
-        // CameraTest 화면으로 네비게이션
-        navigation.navigate('CameraTest', {
-          questionText: state.conversationInfo.questionText,
-          questionId: state.conversationInfo.questionId,
-          conversationId: state.conversationInfo.conversationId,
-          cameraSessionId: state.sessionIds.cameraSessionId,
-          microphoneSessionId: state.sessionIds.microphoneSessionId
-        });
-        return null;
+        // CameraTest 화면으로 네비게이션은 useEffect에서 처리
+        return (
+          <View className="flex-1 justify-center items-center bg-white">
+            <Text className="text-lg text-gray-600">카메라 테스트 화면으로 이동 중...</Text>
+          </View>
+        );
 
       // B-3: 마이크 테스트 단계
       case 'mic_test':

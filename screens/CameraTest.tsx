@@ -21,7 +21,7 @@ export default function CameraTest({ route, navigation }: Props) {
     const [isMicTested, setIsMicTested] = useState(false);
 
     const handleStart = () => {
-        // ConversationFlow로 돌아가서 다음 단계 진행
+        // ConversationFlow로 돌아가서 대화 세션 생성하도록 함
         navigation.goBack();
     };
 

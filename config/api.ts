@@ -120,6 +120,11 @@ export const API_ENDPOINTS = {
     profile: '/api/profile',
     updateProfile: '/api/profile',
     updateProfileImage: '/api/profile/image',
+    // 감정 분석 관련
+    emotion: {
+        predict: '/predict_emotion',
+        health: '/health',
+    },
 };
 
 // API 설정 가져오기

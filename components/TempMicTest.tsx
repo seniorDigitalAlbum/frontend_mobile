@@ -17,7 +17,12 @@ export default function TempMicTest({ isTested, onTest }: TempMicTestProps) {
     useEffect(() => {
         return () => {
             if (recordingRef.current) {
-                recordingRef.current.stopAndUnloadAsync();
+                try {
+                    recordingRef.current.stopAndUnloadAsync();
+                } catch (error) {
+                    // 이미 unload된 경우 무시
+                    console.log('Recording already unloaded');
+                }
             }
         };
     }, []);
@@ -62,7 +67,11 @@ export default function TempMicTest({ isTested, onTest }: TempMicTestProps) {
             // 3초 후 자동으로 녹음 중지
             setTimeout(async () => {
                 if (recordingRef.current) {
-                    await recordingRef.current.stopAndUnloadAsync();
+                    try {
+                        await recordingRef.current.stopAndUnloadAsync();
+                    } catch (error) {
+                        console.log('Recording already stopped');
+                    }
                     setIsRecording(false);
                     setAudioLevel(0);
                     audioLevelAnimation.setValue(0);
@@ -79,7 +88,11 @@ export default function TempMicTest({ isTested, onTest }: TempMicTestProps) {
 
     const stopMicTest = async () => {
         if (recordingRef.current) {
-            await recordingRef.current.stopAndUnloadAsync();
+            try {
+                await recordingRef.current.stopAndUnloadAsync();
+            } catch (error) {
+                console.log('Recording already stopped');
+            }
             setIsRecording(false);
             setAudioLevel(0);
             audioLevelAnimation.setValue(0);

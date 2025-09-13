@@ -7,8 +7,6 @@ import AlbumHero from '../components/AlbumHero';
 import QuestionList from '../components/QuestionList';
 import questionService from '../services/questionService';
 import { Question } from '../types/question';
-import conversationApiService from '../services/api/conversationApiService';
-import microphoneApiService from '../services/api/microphoneApiService';
 
 export default function Home() {
     const navigation: any = useNavigation();
@@ -51,36 +49,13 @@ export default function Home() {
         }
     };
 
-    const handleQuestionPress = async (question: Question) => {
-        try {
-            // A-2: 사용자 질문 선택
-            const userId = 'user-123'; // 실제로는 로그인된 사용자 ID 사용
-            
-            // 대화 세션 생성
-            const conversation = await conversationApiService.createConversation({
-                userId,
-                questionId: question.id
-            });
-            
-            console.log('대화 세션 생성됨:', conversation);
-            
-            // 새로운 대화 플로우로 이동
-            navigation.navigate('ConversationFlow', { 
-                questionText: question.content,
-                questionId: question.id,
-                conversationId: conversation.id,
-                userId
-            });
-        } catch (error) {
-            console.error('대화 세션 생성 실패:', error);
-            // 에러가 발생해도 기본 흐름은 진행
-            navigation.navigate('ConversationFlow', { 
-                questionText: question.content,
-                questionId: question.id,
-                conversationId: `conv-${Date.now()}`,
-                userId: 'user-123'
-            });
-        }
+    const handleQuestionPress = (question: Question) => {
+        // ConversationFlow로 이동 (대화 세션은 카메라/마이크 테스트 후에 생성)
+        navigation.navigate('ConversationFlow', { 
+            questionText: question.content,
+            questionId: question.id,
+            userId: 'user-123'
+        });
     };
 
     if (loading) {

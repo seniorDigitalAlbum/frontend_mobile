@@ -1,3 +1,5 @@
+// 사용되지 않는 화면 - Conversation.tsx에서 UserAnswerSection 컴포넌트로 대체됨
+/*
 import { View, Text, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';

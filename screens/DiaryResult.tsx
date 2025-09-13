@@ -5,6 +5,8 @@ import { RootStackParamList } from '../App';
 import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
 import { albumApiService } from '../services/api/albumApiService';
+import { Audio } from 'expo-av';
+import { useState, useEffect } from 'react';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
 
@@ -13,10 +15,84 @@ export default function DiaryResult({ route }: Props) {
         diary, 
         conversationId, 
         finalEmotion = '기쁨',
-        userId = 'user123' // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+        userId = 'user123', // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+        musicRecommendations = []
     } = route.params || { diary: '일기가 생성되지 않았습니다.' };
     const { addDiary, updateDiary, removeDiary } = useDiary();
     const navigation = useNavigation();
+    
+    const [sound, setSound] = useState<Audio.Sound | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    // 음악 자동 재생
+    useEffect(() => {
+        const playBackgroundMusic = async () => {
+            if (musicRecommendations.length > 0) {
+                try {
+                    // 첫 번째 추천 음악 재생
+                    const firstMusic = musicRecommendations[0];
+                    console.log('배경음악 재생 시작:', firstMusic.title);
+                    
+                    // YouTube 링크를 직접 재생할 수 없으므로, 
+                    // 실제 구현에서는 YouTube API나 다른 음악 서비스를 사용해야 합니다.
+                    // 여기서는 시뮬레이션으로 처리합니다.
+                    
+                    // 오디오 모드 설정
+                    await Audio.setAudioModeAsync({
+                        allowsRecordingIOS: false,
+                        staysActiveInBackground: true,
+                        playsInSilentModeIOS: true,
+                        shouldDuckAndroid: true,
+                        playThroughEarpieceAndroid: false,
+                    });
+                    
+                    // 실제 구현에서는 YouTube 링크를 오디오 스트림으로 변환하거나
+                    // 다른 음악 서비스 API를 사용해야 합니다.
+                    console.log('음악 재생 준비 완료:', firstMusic.youtubeLink);
+                    setIsPlaying(true);
+                    
+                } catch (error) {
+                    console.error('배경음악 재생 실패:', error);
+                }
+            }
+        };
+
+        playBackgroundMusic();
+
+        // 컴포넌트 언마운트 시 정리
+        return () => {
+            if (sound) {
+                sound.unloadAsync();
+            }
+        };
+    }, [musicRecommendations]);
+
+    // 감정에 따른 이모티콘 매핑
+    const getEmotionEmoji = (emotion: string) => {
+        const emotionMap: Record<string, string> = {
+            '기쁨': '😊',
+            '슬픔': '😢',
+            '분노': '😠',
+            '두려움': '😨',
+            '놀람': '😲',
+            '혐오': '🤢',
+            '그리움': '🥺',
+            '평온': '😌',
+            '설렘': '🥰',
+            '우울': '😔',
+            '행복': '😄',
+            '불안': '😰',
+            '화남': '😡',
+            '걱정': '😟',
+            '만족': '😌',
+            '감사': '🙏',
+            '사랑': '❤️',
+            '희망': '🌟',
+            '평범': '😐',
+            '피곤': '😴'
+        };
+        return emotionMap[emotion] || '😊';
+    };
 
     const handleSaveDiary = async () => {
         // 임시 일기 데이터 생성 (프론트엔드에 즉시 추가)
@@ -92,8 +168,16 @@ export default function DiaryResult({ route }: Props) {
                 {/* 상단 감정 이모티콘 */}
                 <View className="items-center pt-12 pb-6">
                     <View className="w-24 h-24 bg-yellow-100 rounded-full justify-center items-center mb-4">
-                        <Text className="text-4xl">😊</Text>
+                        <Text className="text-4xl">{getEmotionEmoji(finalEmotion)}</Text>
                     </View>
+                    {/* 음악 재생 상태 표시 */}
+                    {isPlaying && musicRecommendations.length > 0 && (
+                        <View className="bg-green-100 px-4 py-2 rounded-full mb-2">
+                            <Text className="text-green-600 font-medium text-sm">
+                                🎵 {musicRecommendations[0].title} - {musicRecommendations[0].artist}
+                            </Text>
+                        </View>
+                    )}
                 </View>
 
                 {/* 제목 */}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import microphoneApiService from '../services/api/microphoneApiService';
@@ -7,16 +7,24 @@ import microphoneApiService from '../services/api/microphoneApiService';
 interface AnswerMicProps {
     questionId: string;
     microphoneSessionId?: string;
+    cameraSessionId?: string;
+    conversationId?: string;
+    userId?: string;
     onRecordingComplete?: (audioUri: string, questionId: string) => void;
     onRecordingStart?: (questionId: string) => void;
+    onAIResponse?: (aiResponse: string, audioBase64?: string) => void;
     maxDuration?: number; // 최대 녹음 시간 (초)
 }
 
 export default function AnswerMic({ 
     questionId,
     microphoneSessionId,
+    cameraSessionId,
+    conversationId,
+    userId,
     onRecordingComplete, 
     onRecordingStart,
+    onAIResponse,
     maxDuration = 60 
 }: AnswerMicProps) {
     const [isRecording, setIsRecording] = useState(false);
@@ -52,44 +60,79 @@ export default function AnswerMic({
                 playsInSilentModeIOS: true,
             });
 
-            // 녹음 시작 (매우 압축된 WAV 형식으로 설정)
-            const { recording } = await Audio.Recording.createAsync({
-                android: {
-                    extension: '.wav',
-                    outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_DEFAULT,
-                    audioEncoder: Audio.RECORDING_OPTION_ANDROID_AUDIO_ENCODER_DEFAULT,
-                    sampleRate: 4000, // 매우 낮은 샘플레이트
-                    numberOfChannels: 1,
-                    bitRate: 16000, // 매우 낮은 비트레이트
-                },
-                ios: {
-                    extension: '.wav',
-                    outputFormat: Audio.RECORDING_OPTION_IOS_OUTPUT_FORMAT_LINEARPCM,
-                    audioQuality: Audio.RECORDING_OPTION_IOS_AUDIO_QUALITY_LOW, // 낮은 품질
-                    sampleRate: 4000, // 매우 낮은 샘플레이트
-                    numberOfChannels: 1,
-                    bitRate: 16000, // 매우 낮은 비트레이트
-                    linearPCMBitDepth: 8, // 8비트로 낮춤
-                    linearPCMIsBigEndian: false,
-                    linearPCMIsFloat: false,
-                },
-                web: {
-                    mimeType: 'audio/wav',
-                    bitsPerSecond: 16000, // 매우 낮은 비트레이트
-                },
-            });
+            // 플랫폼별 녹음 설정
+            let recordingOptions;
+            
+            if (Platform.OS === 'web') {
+                // 웹 환경: WebM 형식 사용 (모든 플랫폼 설정 포함)
+                recordingOptions = {
+                    web: {
+                        mimeType: 'audio/webm;codecs=opus',
+                        bitsPerSecond: 128000,
+                    },
+                    android: {
+                        extension: '.wav',
+                        outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_DEFAULT,
+                        audioEncoder: Audio.RECORDING_OPTION_ANDROID_AUDIO_ENCODER_DEFAULT,
+                        sampleRate: 8000,
+                        numberOfChannels: 1,
+                        bitRate: 32000,
+                    },
+                    ios: {
+                        extension: '.wav',
+                        outputFormat: Audio.RECORDING_OPTION_IOS_OUTPUT_FORMAT_LINEARPCM,
+                        audioQuality: Audio.RECORDING_OPTION_IOS_AUDIO_QUALITY_LOW,
+                        sampleRate: 8000,
+                        numberOfChannels: 1,
+                        bitRate: 32000,
+                        linearPCMBitDepth: 16,
+                        linearPCMIsBigEndian: false,
+                        linearPCMIsFloat: false,
+                    },
+                };
+            } else {
+                // 모바일 환경: 압축된 WAV 형식 사용
+                recordingOptions = {
+                    android: {
+                        extension: '.wav',
+                        outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_DEFAULT,
+                        audioEncoder: Audio.RECORDING_OPTION_ANDROID_AUDIO_ENCODER_DEFAULT,
+                        sampleRate: 8000, // 낮은 샘플레이트
+                        numberOfChannels: 1,
+                        bitRate: 32000, // 낮은 비트레이트
+                    },
+                    ios: {
+                        extension: '.wav',
+                        outputFormat: Audio.RECORDING_OPTION_IOS_OUTPUT_FORMAT_LINEARPCM,
+                        audioQuality: Audio.RECORDING_OPTION_IOS_AUDIO_QUALITY_LOW,
+                        sampleRate: 8000, // 낮은 샘플레이트
+                        numberOfChannels: 1,
+                        bitRate: 32000, // 낮은 비트레이트
+                        linearPCMBitDepth: 16,
+                        linearPCMIsBigEndian: false,
+                        linearPCMIsFloat: false,
+                    },
+                };
+            }
+
+            const { recording } = await Audio.Recording.createAsync(recordingOptions);
             
             recordingRef.current = recording;
             setIsRecording(true);
             setRecordingDuration(0);
 
-            // 마이크 세션 상태를 RECORDING으로 업데이트
-            if (microphoneSessionId) {
+            // 발화 시작 API 호출
+            if (microphoneSessionId && cameraSessionId && conversationId) {
                 try {
-                    await microphoneApiService.updateSessionStatus(microphoneSessionId, 'RECORDING');
-                    console.log('마이크 세션 상태가 RECORDING으로 업데이트됨');
+                    const speechStartResponse = await microphoneApiService.startSpeech({
+                        userId: '1', // 하드코딩된 사용자 ID
+                        microphoneSessionId: microphoneSessionId,
+                        cameraSessionId: cameraSessionId,
+                        conversationId: parseInt(conversationId)
+                    });
+                    console.log('발화 시작됨:', speechStartResponse);
                 } catch (error) {
-                    console.error('마이크 세션 상태 업데이트 실패:', error);
+                    console.error('발화 시작 실패:', error);
                 }
             }
             
@@ -150,13 +193,23 @@ export default function AnswerMic({
                 durationRef.current = null;
             }
 
-            // 마이크 세션 상태를 STOPPED으로 업데이트
-            if (microphoneSessionId) {
+            // 발화 종료 API 호출 (query 파라미터로 전송)
+            if (microphoneSessionId && cameraSessionId) {
                 try {
-                    await microphoneApiService.updateSessionStatus(microphoneSessionId, 'STOPPED');
-                    console.log('마이크 세션 상태가 STOPPED으로 업데이트됨');
+                    const speechEndResponse = await microphoneApiService.endSpeechWithQuery({
+                        microphoneSessionId: microphoneSessionId,
+                        cameraSessionId: cameraSessionId,
+                        userId: '1', // 하드코딩된 사용자 ID
+                        audioData: uri // 녹음된 오디오 URI
+                    });
+                    console.log('발화 종료됨:', speechEndResponse);
+                    
+                    // AI 응답을 부모 컴포넌트로 전달
+                    if (speechEndResponse && speechEndResponse.status === 'success' && onAIResponse) {
+                        onAIResponse(speechEndResponse.aiResponse, speechEndResponse.audioBase64);
+                    }
                 } catch (error) {
-                    console.error('마이크 세션 상태 업데이트 실패:', error);
+                    console.error('발화 종료 실패:', error);
                 }
             }
 
