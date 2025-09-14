@@ -12,7 +12,7 @@ interface AnswerMicProps {
     userId?: string;
     onRecordingComplete?: (audioUri: string, questionId: string) => void;
     onRecordingStart?: (questionId: string) => void;
-    onAIResponse?: (aiResponse: string, audioBase64?: string) => void;
+    onAIResponse?: (aiResponse: string, audioBase64?: string, conversationMessageId?: number) => void;
     maxDuration?: number; // 최대 녹음 시간 (초)
 }
 
@@ -25,7 +25,7 @@ export default function AnswerMic({
     onRecordingComplete, 
     onRecordingStart,
     onAIResponse,
-    maxDuration = 60 
+    maxDuration = 120 
 }: AnswerMicProps) {
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
@@ -44,6 +44,29 @@ export default function AnswerMic({
             }
         };
     }, []);
+
+    // 오디오 파일을 Base64로 변환하는 함수
+    const convertAudioToBase64 = async (uri: string): Promise<string> => {
+        try {
+            const response = await fetch(uri);
+            const blob = await response.blob();
+            
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result as string;
+                    // data:audio/wav;base64, 부분을 제거하고 순수 Base64만 반환
+                    const base64Data = base64.split(',')[1];
+                    resolve(base64Data);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.error('오디오 Base64 변환 실패:', error);
+            throw error;
+        }
+    };
 
     const startRecording = async () => {
         try {
@@ -120,15 +143,16 @@ export default function AnswerMic({
             recordingRef.current = recording;
             setIsRecording(true);
             setRecordingDuration(0);
+            
+            console.log('🎤 녹음 시작됨 - duration timer 시작');
 
             // 발화 시작 API 호출
-            if (microphoneSessionId && cameraSessionId && conversationId) {
+            if (microphoneSessionId && cameraSessionId) {
                 try {
                     const speechStartResponse = await microphoneApiService.startSpeech({
-                        userId: '1', // 하드코딩된 사용자 ID
+                        userId: "1",
                         microphoneSessionId: microphoneSessionId,
-                        cameraSessionId: cameraSessionId,
-                        conversationId: parseInt(conversationId)
+                        cameraSessionId: cameraSessionId
                     });
                     console.log('발화 시작됨:', speechStartResponse);
                 } catch (error) {
@@ -145,8 +169,10 @@ export default function AnswerMic({
             durationRef.current = setInterval(() => {
                 setRecordingDuration(prev => {
                     const newDuration = prev + 1;
+                    console.log(`⏱️ 녹음 시간: ${newDuration}초 / ${maxDuration}초`);
                     // 최대 시간 도달 시 자동 중지
                     if (newDuration >= maxDuration) {
+                        console.log('⏱️ 최대 시간 도달 - 자동 중지');
                         stopRecording();
                         return maxDuration;
                     }
@@ -178,11 +204,17 @@ export default function AnswerMic({
     };
 
     const stopRecording = async () => {
-        if (!recordingRef.current) return;
+        console.log('🛑 stopRecording 호출됨');
+        if (!recordingRef.current) {
+            console.log('🛑 recordingRef가 null - 녹음이 이미 종료됨');
+            return;
+        }
 
         try {
+            console.log('🛑 녹음 종료 중...');
             await recordingRef.current.stopAndUnloadAsync();
             const uri = recordingRef.current.getURI();
+            console.log('🛑 녹음 파일 URI:', uri);
             
             setIsRecording(false);
             setAudioLevel(0);
@@ -191,22 +223,27 @@ export default function AnswerMic({
             if (durationRef.current) {
                 clearInterval(durationRef.current);
                 durationRef.current = null;
+                console.log('🛑 duration timer 정리됨');
             }
 
-            // 발화 종료 API 호출 (query 파라미터로 전송)
-            if (microphoneSessionId && cameraSessionId) {
+            // 발화 종료 API 호출
+            if (microphoneSessionId && cameraSessionId && uri) {
                 try {
-                    const speechEndResponse = await microphoneApiService.endSpeechWithQuery({
+                    // 오디오 파일을 Base64로 변환
+                    const audioBase64 = await convertAudioToBase64(uri);
+                    
+                    const speechEndResponse = await microphoneApiService.endSpeech({
                         microphoneSessionId: microphoneSessionId,
                         cameraSessionId: cameraSessionId,
-                        userId: '1', // 하드코딩된 사용자 ID
-                        audioData: uri // 녹음된 오디오 URI
+                        userId: "1",
+                        conversationId: conversationId,
+                        audioData: audioBase64 // Base64로 변환된 오디오 데이터
                     });
                     console.log('발화 종료됨:', speechEndResponse);
                     
                     // AI 응답을 부모 컴포넌트로 전달
                     if (speechEndResponse && speechEndResponse.status === 'success' && onAIResponse) {
-                        onAIResponse(speechEndResponse.aiResponse, speechEndResponse.audioBase64);
+                        onAIResponse(speechEndResponse.userText, '', speechEndResponse.conversationMessageId);
                     }
                 } catch (error) {
                     console.error('발화 종료 실패:', error);

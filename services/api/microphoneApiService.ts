@@ -30,7 +30,6 @@ export interface SpeechStartRequest {
   microphoneSessionId: string;
   cameraSessionId: string;
   userId: string;
-  conversationId: number;
 }
 
 export interface SpeechStartResponse {
@@ -60,8 +59,7 @@ export interface SpeechEndResponse {
   status: string;
   message: string;
   conversationMessageId: number;
-  aiResponse: string;
-  audioBase64: string;
+  userText: string;
 }
 
 class MicrophoneApiService {

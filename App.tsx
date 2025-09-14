@@ -31,7 +31,7 @@ import Notification from './screens/Notification';
 import Conversation from './screens/Conversation';
 import Chat from './screens/Chat';
 import DiaryResult from './screens/DiaryResult';
-import DiaryLoading from './components/DiaryLoading';
+import DiaryLoading from './screens/DiaryLoading';
 import ConversationFlow from './components/ConversationFlow';
 
 /**

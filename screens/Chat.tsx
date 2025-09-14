@@ -28,7 +28,7 @@ export default function Chat({ route, navigation }: Props) {
 
     // 대화 세션 정보 추출
     const conversationId = route.params?.conversationId;
-    const userId = 'user123'; // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+    const userId = "1"; // 하드코딩된 사용자 ID
 
     const handleGenerateDiary = async () => {
         setIsGenerating(true);

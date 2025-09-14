@@ -63,7 +63,7 @@ export default function AIChat({ route, navigation }: Props) {
         try {
             // 발화 시작 API 호출
             if (microphoneSessionId && cameraSessionId) {
-                const userId = 'user-123'; // 실제로는 로그인된 사용자 ID 사용
+                const userId = "1"; // 하드코딩된 사용자 ID
                 const speechStartResponse = await microphoneApiService.startSpeech({
                     microphoneSessionId,
                     cameraSessionId,

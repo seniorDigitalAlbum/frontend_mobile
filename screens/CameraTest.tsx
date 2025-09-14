@@ -20,9 +20,29 @@ export default function CameraTest({ route, navigation }: Props) {
     } = route.params || { questionText: '질문이 없습니다.' };
     const [isMicTested, setIsMicTested] = useState(false);
 
-    const handleStart = () => {
-        // ConversationFlow로 돌아가서 대화 세션 생성하도록 함
-        navigation.goBack();
+    const handleStart = async () => {
+        try {
+            // 대화 세션 시작
+            const startResponse = await conversationApiService.startConversation({
+                userId: "1",
+                questionId: questionId || 1
+            });
+
+            console.log('대화 세션 시작됨:', startResponse);
+
+            // Conversation 화면으로 이동
+            navigation.navigate('Conversation', {
+                questionText: questionText,
+                questionId: questionId,
+                conversationId: startResponse.conversationId,
+                cameraSessionId: startResponse.cameraSessionId,
+                microphoneSessionId: startResponse.microphoneSessionId,
+                userId: "1"
+            });
+        } catch (error) {
+            console.error('대화 세션 시작 실패:', error);
+            Alert.alert('오류', '대화를 시작할 수 없습니다. 다시 시도해주세요.');
+        }
     };
 
     const handleMicTest = async () => {

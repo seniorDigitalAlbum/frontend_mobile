@@ -174,63 +174,48 @@ class TTSService {
             // iOS 오디오 세션을 Playback으로 설정
             await this.setPlaybackMode();
             
-            // 이전 재생 중인 오디오 정지
-            if (this.sound) {
-                await this.sound.stopAsync();
-                await this.sound.unloadAsync();
-            }
+            // 이전 재생 중인 오디오 완전 정지
+            await this.stopAudio();
 
-            // Base64를 ArrayBuffer로 변환
-            const base64Data = audioData;
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+            // Base64 데이터 유효성 검사
+            if (!audioData || typeof audioData !== 'string') {
+                throw new Error('유효하지 않은 오디오 데이터');
             }
 
             // 오디오 로드 및 재생
             const { sound } = await Audio.Sound.createAsync(
                 { uri: `data:audio/${format};base64,${audioData}` },
                 { 
-                    shouldPlay: true,
-                    volume: 1.0, // 최대 볼륨으로 설정
+                    shouldPlay: true, // 로드와 동시에 재생 시작
+                    volume: volume,
                     isLooping: false,
                     rate: 1.0,
                     shouldCorrectPitch: true
                 }
             );
 
-            // 재생 시작 후 볼륨을 설정
-            await sound.setVolumeAsync(volume);
-            
-            // 여러 번 볼륨을 설정
-            setTimeout(async () => {
-                try {
-                    await sound.setVolumeAsync(volume);
-                } catch (error) {
-                    console.log('볼륨 설정 중 오류:', error);
-                }
-            }, 50);
-            
-            setTimeout(async () => {
-                try {
-                    await sound.setVolumeAsync(volume);
-                } catch (error) {
-                    console.log('볼륨 설정 중 오류:', error);
-                }
-            }, 200);
-
             this.sound = sound;
 
-            // 재생 완료 시 정리
-            sound.setOnPlaybackStatusUpdate((status) => {
-                if (status.isLoaded && status.didJustFinish) {
-                    this.cleanup();
-                }
+            // 재생 완료를 기다리는 Promise 반환
+            return new Promise((resolve, reject) => {
+                sound.setOnPlaybackStatusUpdate((status) => {
+                    if (status.isLoaded && status.didJustFinish) {
+                        console.log('🎵 TTS 재생 완료');
+                        this.cleanup();
+                        resolve();
+                    } else if (status.isLoaded && status.error) {
+                        console.error('TTS 재생 오류:', status.error);
+                        this.cleanup();
+                        reject(new Error(status.error));
+                    }
+                });
             });
 
         } catch (error) {
             console.error('오디오 재생 실패:', error);
+            // 에러 발생 시에도 정리
+            await this.stopAudio();
+            throw error;
         }
     }
 
@@ -238,7 +223,11 @@ class TTSService {
     async stopAudio(): Promise<void> {
         if (this.sound) {
             try {
-                await this.sound.stopAsync();
+                // 재생 상태 확인 후 정지
+                const status = await this.sound.getStatusAsync();
+                if (status.isLoaded && status.isPlaying) {
+                    await this.sound.stopAsync();
+                }
                 await this.sound.unloadAsync();
             } catch (error) {
                 console.error('오디오 정지 실패:', error);

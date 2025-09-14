@@ -37,7 +37,7 @@ export default function Album() {
     const navigation = useNavigation<NavigationProp>();
     const isLoadingRef = useRef(false);
 
-    const userId = 'user123'; // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+    const userId = "1"; // 하드코딩된 사용자 ID
 
     // 초기 데이터 로드 - 임시로 목 데이터만 사용
     useEffect(() => {

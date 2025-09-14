@@ -50,11 +50,11 @@ export default function Home() {
     };
 
     const handleQuestionPress = (question: Question) => {
-        // ConversationFlow로 이동 (대화 세션은 카메라/마이크 테스트 후에 생성)
-        navigation.navigate('ConversationFlow', { 
+        // CameraTest로 이동 (카메라/마이크 테스트 후 대화 시작)
+        navigation.navigate('CameraTest', { 
             questionText: question.content,
             questionId: question.id,
-            userId: 'user-123'
+            userId: "1"
         });
     };
 

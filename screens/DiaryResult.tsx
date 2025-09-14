@@ -5,6 +5,7 @@ import { RootStackParamList } from '../App';
 import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
 import { albumApiService } from '../services/api/albumApiService';
+import conversationApiService from '../services/api/conversationApiService';
 import { Audio } from 'expo-av';
 import { useState, useEffect } from 'react';
 
@@ -15,7 +16,7 @@ export default function DiaryResult({ route }: Props) {
         diary, 
         conversationId, 
         finalEmotion = '기쁨',
-        userId = 'user123', // 임시 사용자 ID, 나중에 실제 사용자 ID로 교체
+        userId = "1", // 하드코딩된 사용자 ID
         musicRecommendations = []
     } = route.params || { diary: '일기가 생성되지 않았습니다.' };
     const { addDiary, updateDiary, removeDiary } = useDiary();
@@ -23,14 +24,41 @@ export default function DiaryResult({ route }: Props) {
     
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [diaryData, setDiaryData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    // 일기 데이터 로드
+    useEffect(() => {
+        const loadDiaryData = async () => {
+            if (conversationId) {
+                try {
+                    setLoading(true);
+                    const diaryResponse = await conversationApiService.getDiary(conversationId);
+                    if (diaryResponse) {
+                        setDiaryData(diaryResponse);
+                        console.log('일기 데이터 로드됨:', diaryResponse);
+                    }
+                } catch (error) {
+                    console.error('일기 데이터 로드 실패:', error);
+                } finally {
+                    setLoading(false);
+                }
+            } else {
+                setLoading(false);
+            }
+        };
+
+        loadDiaryData();
+    }, [conversationId]);
 
     // 음악 자동 재생
     useEffect(() => {
         const playBackgroundMusic = async () => {
-            if (musicRecommendations.length > 0) {
+            const musicList = diaryData?.musicRecommendations || musicRecommendations;
+            if (musicList.length > 0) {
                 try {
                     // 첫 번째 추천 음악 재생
-                    const firstMusic = musicRecommendations[0];
+                    const firstMusic = musicList[0];
                     console.log('배경음악 재생 시작:', firstMusic.title);
                     
                     // YouTube 링크를 직접 재생할 수 없으므로, 
@@ -57,7 +85,9 @@ export default function DiaryResult({ route }: Props) {
             }
         };
 
-        playBackgroundMusic();
+        if (diaryData) {
+            playBackgroundMusic();
+        }
 
         // 컴포넌트 언마운트 시 정리
         return () => {
@@ -65,7 +95,7 @@ export default function DiaryResult({ route }: Props) {
                 sound.unloadAsync();
             }
         };
-    }, [musicRecommendations]);
+    }, [diaryData]);
 
     // 감정에 따른 이모티콘 매핑
     const getEmotionEmoji = (emotion: string) => {
@@ -95,6 +125,9 @@ export default function DiaryResult({ route }: Props) {
     };
 
     const handleSaveDiary = async () => {
+        const diaryContent = diaryData?.diary || diary;
+        const emotion = diaryData?.emotionSummary?.dominantEmotion || finalEmotion;
+        
         // 임시 일기 데이터 생성 (프론트엔드에 즉시 추가)
         const tempDiary = {
             id: Date.now(), // 임시 ID
@@ -103,9 +136,9 @@ export default function DiaryResult({ route }: Props) {
                 month: 'short',
                 day: 'numeric'
             }),
-            preview: diary.substring(0, 100) + '...',
+            preview: diaryContent.substring(0, 100) + '...',
             imageUrl: 'https://picsum.photos/200/200?random=' + Date.now(),
-            content: diary, // 일기 전체 내용 저장
+            content: diaryContent, // 일기 전체 내용 저장
             isPending: true, // 백엔드 저장 중 상태
         };
 
@@ -118,8 +151,8 @@ export default function DiaryResult({ route }: Props) {
             const album = await albumApiService.createAlbum({
                 userId,
                 conversationId: conversationId || 1, // 임시 대화 ID
-                finalEmotion,
-                diaryContent: diary
+                finalEmotion: emotion,
+                diaryContent: diaryContent
             });
 
             console.log('앨범 생성 완료:', album);
@@ -162,19 +195,33 @@ export default function DiaryResult({ route }: Props) {
         navigation.navigate('MainTabs' as never);
     };
 
+    if (loading) {
+        return (
+            <SafeAreaView className="flex-1 bg-white justify-center items-center">
+                <Text className="text-gray-500">일기를 불러오는 중...</Text>
+            </SafeAreaView>
+        );
+    }
+
+    const displayData = diaryData || {
+        diary: diary,
+        emotionSummary: { dominantEmotion: finalEmotion },
+        musicRecommendations: musicRecommendations
+    };
+
     return (
         <SafeAreaView className="flex-1 bg-white">
             <ScrollView className="flex-1">
                 {/* 상단 감정 이모티콘 */}
                 <View className="items-center pt-12 pb-6">
                     <View className="w-24 h-24 bg-yellow-100 rounded-full justify-center items-center mb-4">
-                        <Text className="text-4xl">{getEmotionEmoji(finalEmotion)}</Text>
+                        <Text className="text-4xl">{getEmotionEmoji(displayData.emotionSummary.dominantEmotion)}</Text>
                     </View>
                     {/* 음악 재생 상태 표시 */}
-                    {isPlaying && musicRecommendations.length > 0 && (
+                    {isPlaying && displayData.musicRecommendations.length > 0 && (
                         <View className="bg-green-100 px-4 py-2 rounded-full mb-2">
                             <Text className="text-green-600 font-medium text-sm">
-                                🎵 {musicRecommendations[0].title} - {musicRecommendations[0].artist}
+                                🎵 {displayData.musicRecommendations[0].title} - {displayData.musicRecommendations[0].artist}
                             </Text>
                         </View>
                     )}
@@ -196,7 +243,7 @@ export default function DiaryResult({ route }: Props) {
                 <View className="px-6 mb-8">
                     <View className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                         <Text className="text-lg text-gray-700 leading-7">
-                            {diary}
+                            {displayData.diary}
                         </Text>
                     </View>
                 </View>

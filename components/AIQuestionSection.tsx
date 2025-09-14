@@ -16,7 +16,6 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
     const playQuestion = async () => {
       if (!hasPlayed && questionText && questionText.trim()) {
         try {
-          console.log('TTS 재생 시작 - 텍스트:', questionText);
           setIsPlaying(true);
           const ttsResult = await ttsService.synthesizeText(questionText);
           
@@ -33,7 +32,6 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
           setIsPlaying(false);
         }
       } else if (!questionText || !questionText.trim()) {
-        console.warn('questionText가 비어있습니다:', questionText);
         // 텍스트가 없어도 질문 완료로 처리
         setHasPlayed(true);
         onQuestionComplete?.();
@@ -45,7 +43,7 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
     return () => {
       ttsService.stopAudio();
     };
-  }, [questionText, hasPlayed, onQuestionComplete]);
+  }, [questionText, hasPlayed]);
 
   // 수동 재생 함수
   const handlePlayQuestion = async () => {

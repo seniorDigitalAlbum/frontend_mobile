@@ -16,7 +16,7 @@
 
 import React, { useEffect } from 'react';
 import { View, Text, Alert } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import PermissionManager from './PermissionManager';
 import CameraPreviewTest from './CameraPreviewTest';
 import MicrophoneTest from './MicrophoneTest';
@@ -36,16 +36,28 @@ import conversationApiService from '../services/api/conversationApiService';
  * @returns JSX.Element
  */
 export default function ConversationFlow({
-  questionText,
-  questionId,
-  conversationId,
-  userId,
+  questionText: propQuestionText,
+  questionId: propQuestionId,
+  conversationId: propConversationId,
+  userId: propUserId,
   onFlowComplete,
   onFlowError
 }: ConversationFlowProps) {
   // Context에서 상태와 디스패치 함수 가져오기
   const { state, dispatch } = useConversation();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  
+  // route.params에서 파라미터 가져오기 (스크린으로 사용될 때)
+  const routeParams = route.params || {};
+  const questionText = propQuestionText || routeParams.questionText;
+  const questionId = propQuestionId || routeParams.questionId;
+  const conversationId = propConversationId || routeParams.conversationId;
+  const userId = propUserId || routeParams.userId;
+  
+  // console.log('ConversationFlow - propQuestionText:', propQuestionText);
+  // console.log('ConversationFlow - routeParams.questionText:', routeParams.questionText);
+  // console.log('ConversationFlow - 최종 questionText:', questionText);
 
   /**
    * 컴포넌트 마운트 시 플로우 초기화
@@ -93,7 +105,7 @@ export default function ConversationFlow({
         setTimeout(async () => {
           try {
                  // 대화 세션 시작 API 호출
-                 const userId = '1'; // 하드코딩된 사용자 ID
+                 const userId = "1"; // 하드코딩된 사용자 ID
                  const startResponse = await conversationApiService.startConversation({
                    userId,
                    questionId: state.conversationInfo.questionId || 5
@@ -108,10 +120,13 @@ export default function ConversationFlow({
                  }));
 
                  // 대화 정보 업데이트 (initialize 액션 사용)
+                 // Home에서 선택한 질문 텍스트를 그대로 사용
+                 // console.log('Home에서 받은 원본 questionText:', questionText);
+                 // console.log('Context의 questionText:', state.conversationInfo.questionText);
                  dispatch(conversationActions.initialize({
                    ...state.conversationInfo,
                    conversationId: startResponse.conversationId.toString(),
-                   questionText: startResponse.question.content,
+                   questionText: questionText, // Home에서 직접 받은 원본 질문 텍스트 사용
                    questionId: startResponse.question.id
                  }));
 
@@ -218,11 +233,11 @@ export default function ConversationFlow({
       console.log(formatLogMessage('C-1', 'Conversation 화면으로 이동'));
       dispatch(conversationActions.setProcessing(true));
       
-      // questionText 확인 및 안전한 기본값 설정
-      const textToPlay = state.conversationInfo.questionText || questionText || '안녕하세요, 오늘 하루는 어떠셨나요?';
-      console.log('Conversation으로 전달할 텍스트:', textToPlay);
-      console.log('원본 questionText:', questionText);
-      console.log('Context questionText:', state.conversationInfo.questionText);
+      // Home에서 선택한 원본 질문 텍스트를 우선 사용
+      const textToPlay = questionText || state.conversationInfo.questionText || '안녕하세요, 오늘 하루는 어떠셨나요?';
+      // console.log('Conversation으로 전달할 텍스트:', textToPlay);
+      // console.log('원본 questionText (Home에서 받은 값):', questionText);
+      // console.log('Context questionText:', state.conversationInfo.questionText);
       
       // 통합 대화 화면으로 이동
       navigation.navigate('Conversation', {

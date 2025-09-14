@@ -206,9 +206,31 @@ class ConversationApiService {
   }
 
   // 대화 세션 종료
-  async endConversation(conversationId: number): Promise<{ status: string; message: string } | null> {
+  async endConversation(conversationId: number): Promise<{
+    conversationId: number;
+    status: string;
+    processingStatus: string;
+    messages: Array<{
+      id: number;
+      content: string;
+      senderType: string;
+      createdAt: string;
+    }>;
+    message: string;
+  } | null> {
     try {
-      const response = await this.request<{ status: string; message: string }>(`/${conversationId}/end`, {
+      const response = await this.request<{
+        conversationId: number;
+        status: string;
+        processingStatus: string;
+        messages: Array<{
+          id: number;
+          content: string;
+          senderType: string;
+          createdAt: string;
+        }>;
+        message: string;
+      }>(`/${conversationId}/end`, {
         method: 'PUT',
       });
       return response;

@@ -50,7 +50,7 @@ export default function UserAnswerSection({
             onRecordingComplete={onRecordingComplete}
             onRecordingStart={onRecordingStart}
             onAIResponse={onAIResponse}
-            maxDuration={10} // 10초로 단축
+            maxDuration={120} // 2분으로 설정
           />
           
           {/* 녹음 상태 표시 */}

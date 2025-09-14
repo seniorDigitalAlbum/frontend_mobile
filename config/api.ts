@@ -16,6 +16,19 @@ const getDevServerIp = () => {
 const isDevelopment = __DEV__;
 const isWeb = Platform.OS === 'web';
 
+
+// 감정 분석 API용 동적 IP 가져오는 함수
+export const getEmotionApiUrl = () => {
+  if (isDevelopment) {
+    // 개발 환경에서는 실제 AI 서버 주소 사용
+    return 'http://127.0.0.1:8000';
+  } else {
+    // 프로덕션 환경
+    return 'http://127.0.0.1:8000';
+  }
+};
+
+
 export const API_BASE_URL = (() => {
   if (isDevelopment) {
     if (isWeb) {

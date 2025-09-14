@@ -46,7 +46,7 @@ export default function UserAnswer({ route, navigation }: Props) {
         // 발화 종료 API 호출
         if (microphoneSessionId && cameraSessionId) {
             try {
-                const userId = 'user-123'; // 실제로는 로그인된 사용자 ID 사용
+                const userId = "1"; // 하드코딩된 사용자 ID
                 const speechEndResult = await microphoneApiService.endSpeech(
                     microphoneSessionId,
                     cameraSessionId,
