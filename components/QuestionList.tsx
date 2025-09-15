@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ReactNode } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Props {
     children: ReactNode;
@@ -35,18 +36,38 @@ export default function QuestionList({ children, onPress }: Props) {
         <TouchableOpacity 
             onPress={onPress} 
             activeOpacity={0.7}
-            className="mb-3"
+            className="mb-4"
         >
-            <View className="h-20 w-full bg-white border border-gray-200 rounded-full justify-center items-start px-6 shadow-sm">
+            <View 
+                className="h-20 w-full rounded-2xl justify-center items-start px-6"
+                style={{
+                    backgroundColor: 'white',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0)',
+                    shadowColor: '#999',
+                    shadowOffset: {
+                        width: 0,
+                        height: 8,
+                    },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 32,
+                    elevation: 8,
+                }}
+            >
+                
                 <View className="flex-row items-center w-full">
-                    <View className="w-2 h-2 bg-purple-500 rounded-full mr-4" />
-                    <View className="flex-1">
-                        <Text className="text-black text-base font-medium">
+                    {/* 왼쪽 동그란 원 */}
+                    <View 
+                        className="w-3 h-3 rounded-full mr-3"
+                        style={{
+                            backgroundColor: '#fad0c4',
+                        }}
+                    />
+                    
+                    <View className="flex-1 mx-2">
+                        <Text className="text-black text-base font-medium leading-5">
                             {displayText}
                         </Text>
-                    </View>
-                    <View className="w-6 h-6 bg-purple-100 rounded-full items-center justify-center">
-                        <Text className="text-purple-600 text-xs">→</Text>
                     </View>
                 </View>
             </View>

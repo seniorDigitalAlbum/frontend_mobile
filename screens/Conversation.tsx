@@ -2,6 +2,7 @@ import { View, SafeAreaView, Text, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { useState, useEffect } from 'react';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 import HiddenCamera from '../components/HiddenCamera';
 import AIQuestionSection from '../components/AIQuestionSection';
 import UserAnswerSection from '../components/UserAnswerSection';
@@ -20,6 +21,7 @@ import combinedEmotionApiService from '../services/api/combinedEmotionApiService
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversation'>;
 
 export default function Conversation({ route, navigation }: Props) {
+    const { settings } = useAccessibility();
     const { 
         questionText, 
         questionId, 

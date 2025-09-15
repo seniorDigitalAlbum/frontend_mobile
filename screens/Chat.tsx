@@ -4,10 +4,12 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { useState } from 'react';
 import DiaryLoading from '../components/DiaryLoading';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
 export default function Chat({ route, navigation }: Props) {
+    const { settings } = useAccessibility();
     const [isGenerating, setIsGenerating] = useState(false);
     
     // 전달받은 대화 데이터 또는 기본 데이터 사용
@@ -71,20 +73,20 @@ export default function Chat({ route, navigation }: Props) {
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : 'bg-gray-50'}`}>
             {/* 채팅 내용 */}
-            <ScrollView className="flex-1 px-4 py-4">
+            <ScrollView className={`flex-1 ${settings.isLargeTextMode ? 'px-6 py-6' : 'px-4 py-4'}`}>
                 {chatHistory.map((chat) => (
-                    <View key={chat.id} className={`mb-4 ${chat.type === 'ai' ? 'items-start' : 'items-end'}`}>
+                    <View key={chat.id} className={`${settings.isLargeTextMode ? 'mb-6' : 'mb-4'} ${chat.type === 'ai' ? 'items-start' : 'items-end'}`}>
                         {/* AI 메시지 */}
                         {chat.type === 'ai' && (
                             <View className="flex-row items-end space-x-2">
-                                <View className="w-8 h-8 bg-blue-100 rounded-full justify-center items-center">
-                                    <Ionicons name="person" size={20} color="#3B82F6" />
+                                <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} bg-blue-100 rounded-full justify-center items-center`}>
+                                    <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color="#3B82F6" />
                                 </View>
-                                <View className="max-w-[80%] bg-white p-3 rounded-2xl rounded-bl-md shadow-sm">
-                                    <Text className="text-gray-800">{chat.message}</Text>
-                                    <Text className="text-xs text-gray-500 mt-1">{chat.timestamp}</Text>
+                                <View className={`max-w-[80%] rounded-2xl rounded-bl-md shadow-sm ${settings.isLargeTextMode ? 'p-4' : 'p-3'} ${settings.isHighContrastMode ? 'bg-black border border-white' : 'bg-white'}`}>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>{chat.message}</Text>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>{chat.timestamp}</Text>
                                 </View>
                             </View>
                         )}
@@ -92,12 +94,12 @@ export default function Chat({ route, navigation }: Props) {
                         {/* 사용자 메시지 */}
                         {chat.type === 'user' && (
                             <View className="flex-row items-end space-x-2 justify-end">
-                                <View className="max-w-[80%] bg-purple-500 p-3 rounded-2xl rounded-br-md">
-                                    <Text className="text-white">{chat.message}</Text>
-                                    <Text className="text-xs text-purple-100 mt-1">{chat.timestamp}</Text>
+                                <View className={`max-w-[80%] rounded-2xl rounded-br-md ${settings.isLargeTextMode ? 'p-4' : 'p-3'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-purple-500'}`}>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>{chat.message}</Text>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-600' : 'text-purple-100'}`}>{chat.timestamp}</Text>
                                 </View>
-                                <View className="w-8 h-8 bg-purple-100 rounded-full justify-center items-center">
-                                    <Ionicons name="person" size={20} color="#8B5CF6" />
+                                <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} bg-purple-100 rounded-full justify-center items-center`}>
+                                    <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color="#8B5CF6" />
                                 </View>
                             </View>
                         )}
@@ -106,14 +108,15 @@ export default function Chat({ route, navigation }: Props) {
             </ScrollView>
 
             {/* 일기 생성하기 버튼 */}
-            <View className="bg-white p-6 border-t border-gray-200">
+            <View className={`${settings.isHighContrastMode ? 'bg-black border-white' : 'bg-white border-gray-200'} ${settings.isLargeTextMode ? 'p-8' : 'p-6'} border-t`}>
                 <TouchableOpacity
                     onPress={handleGenerateDiary}
-                    className="w-full bg-purple-500 py-4 rounded-2xl items-center shadow-lg"
+                    className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-purple-500'}`}
                     activeOpacity={0.8}
                     disabled={isGenerating}
+                    style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}
                 >
-                    <Text className="text-lg font-semibold text-white">
+                    <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
                         📝 일기 생성하기
                     </Text>
                 </TouchableOpacity>

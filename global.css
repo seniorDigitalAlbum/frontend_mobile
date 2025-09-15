@@ -11,7 +11,7 @@
     background-color: white !important;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) !important;
   }
-  
+
   body {
     background-color: #f5f5f5 !important;
     display: flex !important;
@@ -21,4 +21,368 @@
   }
 }
 
-/* background-image: linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%); */
+/* 커스텀 그라데이션 배경 */
+.gradient-background {
+  background-image: linear-gradient(to top, #fad0c4 0%, #ffd1ff 100%);
+}
+
+/* 아주 연한 그라데이션 배경 */
+.gradient-background-light {
+  background-image: linear-gradient(to top, #fef7f0 0%, #fef5ff 100%);
+}
+
+/* 유리알(Glassmorphism) 효과 */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(26px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 하이라이트 라인 효과 */
+.glass-highlight-top {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+}
+
+.glass-highlight-left {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3));
+}
+
+/* 큰 글씨 모드 CSS 클래스 */
+.large-text-mode {
+  /* 폰트 크기 증가 */
+  font-size: 1.3em !important;
+  line-height: 1.4 !important;
+}
+
+.large-text-mode h1 {
+  font-size: 2.5em !important;
+  line-height: 1.2 !important;
+}
+
+.large-text-mode h2 {
+  font-size: 2em !important;
+  line-height: 1.3 !important;
+}
+
+.large-text-mode h3 {
+  font-size: 1.75em !important;
+  line-height: 1.3 !important;
+}
+
+.large-text-mode p {
+  font-size: 1.3em !important;
+  line-height: 1.5 !important;
+}
+
+.large-text-mode button {
+  font-size: 1.3em !important;
+  padding: 0.8em 1.2em !important;
+  min-height: 3em !important;
+}
+
+.large-text-mode input {
+  font-size: 1.3em !important;
+  padding: 0.8em !important;
+  min-height: 3em !important;
+}
+
+/* 큰 글씨 모드에서 여백 조정 */
+.large-text-mode .p-2 {
+  padding: 0.6rem !important;
+}
+
+.large-text-mode .p-4 {
+  padding: 1rem !important;
+}
+
+.large-text-mode .p-6 {
+  padding: 1.5rem !important;
+}
+
+.large-text-mode .m-2 {
+  margin: 0.6rem !important;
+}
+
+.large-text-mode .m-4 {
+  margin: 1rem !important;
+}
+
+.large-text-mode .m-6 {
+  margin: 1.5rem !important;
+}
+
+/* 고대비 모드 */
+.high-contrast-mode {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.high-contrast-mode button {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast-mode input {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast-mode .glass-effect {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 2px solid #ffffff !important;
+}
+
+/* 시니어 접근성 가이드라인 - 큰 글씨 모드 */
+.large-text-mode * {
+  font-size: 1.4em !important;
+  line-height: 1.6 !important;
+}
+
+.large-text-mode h1,
+.large-text-mode h2,
+.large-text-mode h3,
+.large-text-mode h4,
+.large-text-mode h5,
+.large-text-mode h6 {
+  font-size: 1.8em !important;
+  line-height: 1.4 !important;
+  margin-bottom: 0.8em !important;
+}
+
+.large-text-mode button,
+.large-text-mode input,
+.large-text-mode textarea {
+  font-size: 1.4em !important;
+  padding: 1em 1.5em !important;
+  min-height: 3.5em !important;
+  border-radius: 0.8em !important;
+}
+
+/* 아이콘 크기 자동 조정 */
+.large-text-mode .icon,
+.large-text-mode [class*="icon"],
+.large-text-mode svg,
+.large-text-mode img {
+  width: 1.4em !important;
+  height: 1.4em !important;
+  min-width: 1.4em !important;
+  min-height: 1.4em !important;
+}
+
+/* 큰 글씨 모드에서 스택 레이아웃으로 변경 - 가로 배치를 세로 배치로 */
+.large-text-mode .flex-row {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 0.8em !important;
+}
+
+.large-text-mode .flex-row > * {
+  margin-bottom: 0.8em !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+.large-text-mode .flex-row > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* 큰 글씨 모드에서 justify-between을 flex-start로 변경 */
+.large-text-mode .justify-between {
+  justify-content: flex-start !important;
+  flex-direction: column !important;
+}
+
+/* 큰 글씨 모드에서 justify-center를 flex-start로 변경 */
+.large-text-mode .justify-center {
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+}
+
+/* 카드와 컨테이너 간격 증가 */
+.large-text-mode .p-2 { padding: 1em !important; }
+.large-text-mode .p-3 { padding: 1.2em !important; }
+.large-text-mode .p-4 { padding: 1.5em !important; }
+.large-text-mode .p-6 { padding: 2em !important; }
+
+.large-text-mode .m-2 { margin: 1em !important; }
+.large-text-mode .m-3 { margin: 1.2em !important; }
+.large-text-mode .m-4 { margin: 1.5em !important; }
+.large-text-mode .m-6 { margin: 2em !important; }
+
+/* 그리드 레이아웃을 스택으로 변경 */
+.large-text-mode .grid-cols-2,
+.large-text-mode .grid-cols-3,
+.large-text-mode .grid-cols-4 {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1em !important;
+}
+
+.large-text-mode .grid-cols-2 > *,
+.large-text-mode .grid-cols-3 > *,
+.large-text-mode .grid-cols-4 > * {
+  width: 100% !important;
+  margin-bottom: 1em !important;
+}
+
+/* 탭 네비게이션을 세로로 변경 */
+.large-text-mode .tab-navigation {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 0.8em !important;
+}
+
+.large-text-mode .tab-navigation > * {
+  margin-bottom: 0.8em !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+/* 버튼 그룹을 세로로 변경 */
+.large-text-mode .button-group {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 1em !important;
+}
+
+.large-text-mode .button-group > * {
+  margin-bottom: 1em !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+/* 폼 요소들 간격 증가 */
+.large-text-mode .form-group {
+  margin-bottom: 1.5em !important;
+}
+
+.large-text-mode .form-group > * {
+  margin-bottom: 0.8em !important;
+}
+
+/* 리스트 아이템 간격 증가 */
+.large-text-mode .list-item {
+  margin-bottom: 1em !important;
+  padding: 1em !important;
+}
+
+/* 모달과 팝업 크기 조정 */
+.large-text-mode .modal,
+.large-text-mode .popup {
+  padding: 2em !important;
+  margin: 1em !important;
+}
+
+/* 일반적인 가로 배치 요소들을 세로로 변경 */
+.large-text-mode .items-center {
+  align-items: flex-start !important;
+  flex-direction: column !important;
+}
+
+.large-text-mode .items-end {
+  align-items: flex-start !important;
+  flex-direction: column !important;
+}
+
+.large-text-mode .items-start {
+  align-items: flex-start !important;
+  flex-direction: column !important;
+}
+
+/* 터치 영역 확대 */
+.large-text-mode button,
+.large-text-mode [role="button"],
+.large-text-mode .touchable {
+  min-height: 3.5em !important;
+  min-width: 3.5em !important;
+  padding: 1em !important;
+}
+
+
+
+
+/* 시니어 접근성 가이드라인 - 고대비 모드 */
+.high-contrast-mode {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.high-contrast-mode * {
+  color: #ffffff !important;
+  background-color: #000000 !important;
+}
+
+.high-contrast-mode button,
+.high-contrast-mode input,
+.high-contrast-mode textarea,
+.high-contrast-mode [role="button"] {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 3px solid #ffffff !important;
+  font-weight: bold !important;
+}
+
+.high-contrast-mode button:hover,
+.high-contrast-mode [role="button"]:hover {
+  background-color: #ffff00 !important;
+  color: #000000 !important;
+}
+
+.high-contrast-mode .bg-white,
+.high-contrast-mode .bg-gray-50,
+.high-contrast-mode .bg-gray-100,
+.high-contrast-mode .bg-gray-200 {
+  background-color: #000000 !important;
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast-mode .text-gray-500,
+.high-contrast-mode .text-gray-600,
+.high-contrast-mode .text-gray-700,
+.high-contrast-mode .text-gray-800,
+.high-contrast-mode .text-black {
+  color: #ffffff !important;
+}
+
+.high-contrast-mode .text-white {
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px #000000 !important;
+}
+
+/* 고대비 모드에서 링크 강조 */
+.high-contrast-mode a,
+.high-contrast-mode [role="link"] {
+  color: #00ffff !important;
+  text-decoration: underline !important;
+  font-weight: bold !important;
+}
+
+.high-contrast-mode a:hover,
+.high-contrast-mode [role="link"]:hover {
+  color: #ffff00 !important;
+}
+
+/* 고대비 모드에서 포커스 표시 강화 */
+.high-contrast-mode *:focus {
+  outline: 4px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+/* 고대비 모드에서 아이콘과 이미지 */
+.high-contrast-mode .icon,
+.high-contrast-mode [class*="icon"],
+.high-contrast-mode svg,
+.high-contrast-mode img {
+  filter: invert(1) !important;
+  border: 1px solid #ffffff !important;
+}

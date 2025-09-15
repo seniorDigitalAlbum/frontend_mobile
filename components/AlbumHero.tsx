@@ -12,7 +12,7 @@ export default function AlbumHero({ imageUrl, onPress }: AlbumHeroProps) {
     <TouchableOpacity 
       onPress={onPress} 
       activeOpacity={0.9}
-      className="w-full h-80 rounded-b-3xl shadow-xl justify-center items-center overflow-hidden"
+      className="w-full h-80 rounded-3xl shadow-xl justify-center items-center overflow-hidden"
     >
       <Image 
         source={{ uri: imageUrl || defaultImageUrl }}

@@ -8,10 +8,12 @@ import { albumApiService } from '../services/api/albumApiService';
 import conversationApiService from '../services/api/conversationApiService';
 import { Audio } from 'expo-av';
 import { useState, useEffect } from 'react';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
 
 export default function DiaryResult({ route }: Props) {
+    const { settings } = useAccessibility();
     const { 
         diary, 
         conversationId, 
@@ -197,8 +199,10 @@ export default function DiaryResult({ route }: Props) {
 
     if (loading) {
         return (
-            <SafeAreaView className="flex-1 bg-white justify-center items-center">
-                <Text className="text-gray-500">일기를 불러오는 중...</Text>
+            <SafeAreaView className={`flex-1 justify-center items-center ${settings.isHighContrastMode ? 'bg-black' : 'bg-white'}`}>
+                <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-500'}`}>
+                    일기를 불러오는 중...
+                </Text>
             </SafeAreaView>
         );
     }
@@ -210,17 +214,17 @@ export default function DiaryResult({ route }: Props) {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : 'bg-white'}`}>
             <ScrollView className="flex-1">
                 {/* 상단 감정 이모티콘 */}
-                <View className="items-center pt-12 pb-6">
-                    <View className="w-24 h-24 bg-yellow-100 rounded-full justify-center items-center mb-4">
-                        <Text className="text-4xl">{getEmotionEmoji(displayData.emotionSummary.dominantEmotion)}</Text>
+                <View className={`items-center ${settings.isLargeTextMode ? 'pt-16 pb-8' : 'pt-12 pb-6'}`}>
+                    <View className={`${settings.isLargeTextMode ? 'w-28 h-28' : 'w-24 h-24'} bg-yellow-100 rounded-full justify-center items-center mb-4`}>
+                        <Text className={`${settings.isLargeTextMode ? 'text-5xl' : 'text-4xl'}`}>{getEmotionEmoji(displayData.emotionSummary.dominantEmotion)}</Text>
                     </View>
                     {/* 음악 재생 상태 표시 */}
                     {isPlaying && displayData.musicRecommendations.length > 0 && (
-                        <View className="bg-green-100 px-4 py-2 rounded-full mb-2">
-                            <Text className="text-green-600 font-medium text-sm">
+                        <View className={`bg-green-100 rounded-full mb-2 ${settings.isLargeTextMode ? 'px-6 py-3' : 'px-4 py-2'}`}>
+                            <Text className={`text-green-600 font-medium ${settings.isLargeTextMode ? 'text-base' : 'text-sm'}`}>
                                 🎵 {displayData.musicRecommendations[0].title} - {displayData.musicRecommendations[0].artist}
                             </Text>
                         </View>
@@ -228,54 +232,57 @@ export default function DiaryResult({ route }: Props) {
                 </View>
 
                 {/* 제목 */}
-                <View className="items-center mb-6">
-                    <Text className="text-2xl font-bold text-gray-800">
+                <View className={`items-center ${settings.isLargeTextMode ? 'mb-8' : 'mb-6'}`}>
+                    <Text className={`font-bold ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
                         오늘의 일기
                     </Text>
                 </View>
 
                 {/* 구분선 */}
-                <View className="mx-6 mb-8">
-                    <View className="h-px bg-gray-200" />
+                <View className={`${settings.isLargeTextMode ? 'mx-8 mb-10' : 'mx-6 mb-8'}`}>
+                    <View className={`h-px ${settings.isHighContrastMode ? 'bg-white' : 'bg-gray-200'}`} />
                 </View>
 
                 {/* 일기 내용 */}
-                <View className="px-6 mb-8">
-                    <View className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                        <Text className="text-lg text-gray-700 leading-7">
+                <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
+                    <View className={`border rounded-2xl shadow-sm ${settings.isLargeTextMode ? 'p-8' : 'p-6'} ${settings.isHighContrastMode ? 'bg-black border-white' : 'bg-white border-gray-200'}`}>
+                        <Text className={`leading-7 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-700'}`}>
                             {displayData.diary}
                         </Text>
                     </View>
                 </View>
 
                 {/* 버튼들 */}
-                <View className="px-6 mb-8 space-y-4">
+                <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'} space-y-4`}>
                     <TouchableOpacity
                         onPress={handleSaveDiary}
-                        className="w-full bg-green-500 py-4 rounded-2xl items-center shadow-lg"
+                        className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-green-500'}`}
                         activeOpacity={0.8}
+                        style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}
                     >
-                        <Text className="text-lg font-semibold text-white">
+                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
                             💾 일기 저장하기
                         </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={() => console.log('일기 공유하기')}
-                        className="w-full bg-blue-500 py-4 rounded-2xl items-center shadow-lg"
+                        className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-blue-500'}`}
                         activeOpacity={0.8}
+                        style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}
                     >
-                        <Text className="text-lg font-semibold text-white">
+                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
                             📤 일기 공유하기
                         </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={handleBackToHome}
-                        className="w-full bg-purple-500 py-4 rounded-2xl items-center shadow-lg"
+                        className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-purple-500'}`}
                         activeOpacity={0.8}
+                        style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}
                     >
-                        <Text className="text-lg font-semibold text-white">
+                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
                             🏠 홈으로 돌아가기
                         </Text>
                     </TouchableOpacity>

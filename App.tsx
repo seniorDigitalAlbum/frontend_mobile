@@ -14,11 +14,13 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { DiaryProvider } from './contexts/DiaryContext';
 import { ConversationProvider } from './contexts/ConversationContext';
+import { AccessibilityProvider, useAccessibility } from './contexts/AccessibilityContext';
+import GlobalAccessibilityWrapper from './components/GlobalAccessibilityWrapper';
 import './global.css';
 
 import Login from './screens/Login';
@@ -195,31 +197,62 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#000',
-        tabBarInactiveTintColor: 'gray',
+        tabBarInactiveTintColor: 'rgba(0, 0, 0, 0.6)',
+        tabBarStyle: {
+          position: 'absolute',
+          bottom: 20,
+          left: 20,
+          right: 20,
+          height: 60,
+          backgroundColor: 'white',
+          borderTopWidth: 0,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          borderBottomLeftRadius: 20,
+          borderBottomRightRadius: 20,
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.18)',
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: 8,
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: 32,
+          elevation: 8,
+        },
+        tabBarShowLabel: false,
       }}
     >
       <Tab.Screen
         name="Home"
         component={Home}
         options={{
-          tabBarLabel: '메인',
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
-          headerShown: true,
-          headerTitle: '',
-          headerTitleAlign: 'left',
-          headerTitleStyle: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: 'white',
-          },
+          tabBarIcon: ({ focused }) => (
+            <View style={{ justifyContent: 'center', alignItems: 'center', height: 60, marginTop: 18 }}>
+              <Ionicons 
+                name="ellipsis-horizontal" 
+                size={28} 
+                color={focused ? "#000000" : "#666666"} 
+              />
+            </View>
+          ),
+          headerShown: false,
         }}
       />
       <Tab.Screen
         name="Album"
         component={Album}
         options={{
-          tabBarLabel: '앨범',
-          tabBarIcon: ({ color, size }) => <Ionicons name="images-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused }) => (
+            <View style={{ justifyContent: 'center', alignItems: 'center', height: 60, marginTop: 18 }}>
+              <Ionicons 
+                name="images-outline" 
+                size={24} 
+                color={focused ? "#000000" : "#666666"} 
+              />
+            </View>
+          ),
           headerShown: false,
           header: () => null,
         }}
@@ -228,8 +261,15 @@ function MainTabs() {
         name="MyPage"
         component={MyPage}
         options={{
-          tabBarLabel: '마이페이지',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <View style={{ justifyContent: 'center', alignItems: 'center', height: 60, marginTop: 18 }}>
+              <Ionicons 
+                name="person-outline" 
+                size={24} 
+                color={focused ? "#000000" : "#666666"} 
+              />
+            </View>
+          ),
         }}
       />
     </Tab.Navigator>
@@ -246,15 +286,17 @@ function MainTabs() {
  */
 export default function App() {
   return (
-    <DiaryProvider>
-      <ConversationProvider>
-        <NavigationContainer linking={linking}>
-          <Stack.Navigator 
-            initialRouteName="MainTabs"
-            screenOptions={{
-              headerShown: false
-            }}
-          >
+    <AccessibilityProvider>
+      <GlobalAccessibilityWrapper>
+        <DiaryProvider>
+          <ConversationProvider>
+            <NavigationContainer linking={linking}>
+              <Stack.Navigator 
+                initialRouteName="MainTabs"
+                screenOptions={{
+                  headerShown: false
+                }}
+              >
             {/* 로그인 화면 */}
             <Stack.Screen name="Login" component={Login} />
             
@@ -285,5 +327,7 @@ export default function App() {
         </NavigationContainer>
       </ConversationProvider>
     </DiaryProvider>
+    </GlobalAccessibilityWrapper>
+    </AccessibilityProvider>
   );
 }

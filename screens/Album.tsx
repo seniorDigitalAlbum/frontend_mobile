@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { albumApiService, Album as AlbumType } from '../services/api/albumApiService';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,6 +32,7 @@ const generateMockDiaries = () => {
 
 export default function Album() {
     const { state, setDiaries, getDiaryById } = useDiary();
+    const { settings } = useAccessibility();
     const [refreshing, setRefreshing] = useState(false);
     const [albums, setAlbums] = useState<AlbumType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -113,26 +115,28 @@ export default function Album() {
                 />
                 {/* 저장 중 상태 표시 */}
                 {item.isPending && (
-                    <View className="absolute top-2 left-2 bg-yellow-500 px-2 py-1 rounded-full">
-                        <Text className="text-xs text-white font-medium">저장 중...</Text>
+                    <View className={`absolute top-2 left-2 bg-yellow-500 rounded-full ${settings.isLargeTextMode ? 'px-3 py-2' : 'px-2 py-1'}`}>
+                        <Text className={`text-white font-medium ${settings.isLargeTextMode ? 'text-sm' : 'text-xs'}`}>
+                            저장 중...
+                        </Text>
                     </View>
                 )}
             </View>
             
             {/* 일기 내용 */}
-            <View className="p-4">
+            <View className={`${settings.isLargeTextMode ? 'p-6' : 'p-4'}`}>
                 {/* 날짜 */}
-                <Text className="text-sm text-gray-500 mb-2">
+                <Text className={`mb-2 ${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
                     {item.date}
                 </Text>
                 
                 {/* 제목 */}
-                <Text className="text-base font-semibold text-gray-800 mb-2 leading-5" numberOfLines={2}>
+                <Text className={`font-semibold mb-2 leading-5 ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`} numberOfLines={2}>
                     {item.title}
                 </Text>
                 
                 {/* 미리보기 */}
-                <Text className="text-sm text-gray-600 leading-4" numberOfLines={2}>
+                <Text className={`leading-4 ${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-600'}`} numberOfLines={2}>
                     {item.preview}
                 </Text>
             </View>
@@ -140,7 +144,7 @@ export default function Album() {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : 'bg-gray-50'}`}>
             {/* 일기 목록 */}
             <FlatList
                 data={state.diaries}
@@ -150,11 +154,11 @@ export default function Album() {
                 columnWrapperStyle={{ justifyContent: 'space-between' }}
                 contentContainerStyle={{ paddingHorizontal: 16 }}
                 ListHeaderComponent={
-                    <View className="px-4 py-6">
-                        <Text className="text-2xl font-bold text-gray-800 mb-2">
+                    <View className={`${settings.isLargeTextMode ? 'px-6 py-8' : 'px-4 py-6'}`}>
+                        <Text className={`font-bold mb-2 ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
                             나의 일기장
                         </Text>
-                        <Text className="text-gray-600">
+                        <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-600'}`}>
                             특별한 순간들을 담은 일기들을 확인해보세요
                         </Text>
                     </View>

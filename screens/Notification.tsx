@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import notificationService from '../services/notificationService';
 import { NotificationItem } from '../types/notification';
+import { useAccessibility } from '../contexts/AccessibilityContext';
 
 export default function Notification() {
+  const { settings } = useAccessibility();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,17 +61,17 @@ export default function Notification() {
   const renderNotificationItem = ({ item }: { item: NotificationItem }) => (
     <TouchableOpacity 
       onPress={() => handleMarkAsRead(item.id)}
-      className={`flex-row p-4 border-b border-gray-100 bg-white ${!item.isRead ? 'bg-blue-50' : ''}`}
+      className={`flex-row border-b ${settings.isLargeTextMode ? 'p-6' : 'p-4'} ${settings.isHighContrastMode ? 'border-white bg-black' : 'border-gray-100 bg-white'} ${!item.isRead ? (settings.isHighContrastMode ? 'bg-gray-800' : 'bg-blue-50') : ''}`}
     >
       <View className="flex-1">
-        <Text className={`text-base font-semibold mb-1 ${!item.isRead ? 'text-black' : 'text-gray-700'}`}>
+        <Text className={`font-semibold mb-1 ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${!item.isRead ? (settings.isHighContrastMode ? 'text-white' : 'text-black') : (settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-700')}`}>
           {item.title}
         </Text>
-        <Text className="text-sm text-gray-600 mb-2">{item.message}</Text>
-        <Text className="text-xs text-gray-500">{item.time}</Text>
+        <Text className={`mb-2 ${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-600'}`}>{item.message}</Text>
+        <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} ${settings.isHighContrastMode ? 'text-gray-400' : 'text-gray-500'}`}>{item.time}</Text>
       </View>
       {!item.isRead && (
-        <View className="w-2 h-2 rounded-full bg-blue-500 ml-3 self-center" />
+        <View className={`${settings.isLargeTextMode ? 'w-3 h-3' : 'w-2 h-2'} rounded-full bg-blue-500 ml-3 self-center`} />
       )}
     </TouchableOpacity>
   );
