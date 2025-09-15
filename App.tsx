@@ -14,6 +14,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { DiaryProvider } from './contexts/DiaryContext';
@@ -33,6 +34,7 @@ import Chat from './screens/Chat';
 import DiaryResult from './screens/DiaryResult';
 import DiaryLoading from './screens/DiaryLoading';
 import ConversationFlow from './components/ConversationFlow';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 /**
  * 루트 스택 네비게이션 파라미터 타입 정의
@@ -55,20 +57,6 @@ export type RootStackParamList = {
     userId: string;                    // 사용자 ID
   };
   Notification: undefined;
-  // AIChat: { // 사용되지 않는 화면
-  //   questionText: string;
-  //   questionId?: number;
-  //   conversationId?: number;
-  //   cameraSessionId?: string;
-  //   microphoneSessionId?: string;
-  // };
-  // UserAnswer: { // 사용되지 않는 화면
-  //   questionText: string;
-  //   questionId?: number;
-  //   conversationId?: number;
-  //   cameraSessionId?: string;
-  //   microphoneSessionId?: string;
-  // };
   Conversation: { 
     questionText: string;
     questionId?: number;
@@ -101,6 +89,97 @@ export type RootStackParamList = {
 // 네비게이터 인스턴스 생성
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
+
+// 웹에서 URL 라우팅을 위한 linking 설정
+const linking = Platform.OS === 'web' ? {
+  prefixes: ['http://localhost:8081', 'https://seniordigitalalbum.github.io/frontend_mobile'],
+  config: {
+    screens: {
+      MainTabs: {
+        path: '',
+        screens: {
+          Home: '',
+          Album: 'album',
+          MyPage: 'mypage',
+        },
+      },
+      Login: 'login',
+      CameraTest: {
+        path: 'camera-test',
+        parse: {
+          questionText: (questionText: string) => decodeURIComponent(questionText),
+          questionId: (questionId: string) => questionId ? parseInt(questionId, 10) : undefined,
+          conversationId: (conversationId: string) => conversationId ? parseInt(conversationId, 10) : undefined,
+        },
+        stringify: {
+          questionText: (questionText: string) => encodeURIComponent(questionText),
+        },
+      },
+      ConversationFlow: {
+        path: 'conversation-flow/:questionId/:conversationId/:userId',
+        parse: {
+          questionId: (questionId: string) => parseInt(questionId, 10),
+          conversationId: (conversationId: string) => conversationId,
+          userId: (userId: string) => userId,
+        },
+      },
+      Conversation: {
+        path: 'conversation',
+        parse: {
+          questionId: (questionId: string) => questionId ? parseInt(questionId, 10) : undefined,
+          conversationId: (conversationId: string) => conversationId ? parseInt(conversationId, 10) : undefined,
+        },
+      },
+      Notification: 'notification',
+      Chat: {
+        path: 'chat',
+        parse: {
+          conversationId: (conversationId: string) => conversationId ? parseInt(conversationId, 10) : undefined,
+        },
+      },
+      DiaryResult: {
+        path: 'diary-result',
+        parse: {
+          conversationId: (conversationId: string) => conversationId ? parseInt(conversationId, 10) : undefined,
+        },
+      },
+      DiaryLoading: 'diary-loading',
+    },
+  },
+} : undefined;
+
+/**
+ * ConversationFlow 래퍼 컴포넌트
+ * React Navigation Screen으로 사용하기 위해 route params를 props로 변환합니다.
+ */
+type ConversationFlowScreenProps = NativeStackScreenProps<RootStackParamList, 'ConversationFlow'>;
+
+function ConversationFlowScreen({ route, navigation }: ConversationFlowScreenProps) {
+  const { questionText, questionId, conversationId, userId } = route.params;
+  
+  const handleFlowComplete = (result: any) => {
+    // 플로우 완료 시 처리 로직
+    console.log('ConversationFlow 완료:', result);
+    // 필요에 따라 다른 화면으로 네비게이션
+  };
+  
+  const handleFlowError = (error: string) => {
+    // 플로우 에러 시 처리 로직
+    console.error('ConversationFlow 에러:', error);
+    // 에러 화면으로 네비게이션하거나 알림 표시
+  };
+  
+  return (
+    <ConversationFlow
+      questionText={questionText}
+      questionId={questionId}
+      conversationId={conversationId}
+      userId={userId}
+      onFlowComplete={handleFlowComplete}
+      onFlowError={handleFlowError}
+    />
+  );
+}
 
 /**
  * MainTabs 컴포넌트
@@ -169,7 +248,7 @@ export default function App() {
   return (
     <DiaryProvider>
       <ConversationProvider>
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
           <Stack.Navigator 
             initialRouteName="MainTabs"
             screenOptions={{
@@ -183,7 +262,7 @@ export default function App() {
             <Stack.Screen name="MainTabs" component={MainTabs} />
             
             {/* 대화 플로우 화면 */}
-            <Stack.Screen name="ConversationFlow" component={ConversationFlow} />
+            <Stack.Screen name="ConversationFlow" component={ConversationFlowScreen} />
             
             {/* 카메라 테스트 화면 */}
             <Stack.Screen name="CameraTest" component={CameraTest} />
@@ -193,12 +272,6 @@ export default function App() {
             
             {/* 알림 화면 */}
             <Stack.Screen name="Notification" component={Notification} />
-            
-            {/* AI 채팅 화면 */}
-            {/* <Stack.Screen name="AIChat" component={AIChat} /> 사용되지 않는 화면 */}
-            
-            {/* 사용자 답변 화면 */}
-            {/* <Stack.Screen name="UserAnswer" component={UserAnswer} /> 사용되지 않는 화면 */}
             
             {/* 채팅 화면 */}
             <Stack.Screen name="Chat" component={Chat} />
