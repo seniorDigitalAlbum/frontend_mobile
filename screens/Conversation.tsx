@@ -164,6 +164,37 @@ export default function Conversation({ route, navigation }: Props) {
     const handleAIResponse = async (userText: string, audioBase64?: string, conversationMessageId?: number) => {
         console.log('사용자 발화 텍스트 받음:', userText);
         console.log('conversationMessageId 받음:', conversationMessageId);
+        
+        // STT 결과가 null이거나 유효하지 않은 경우 처리
+        if (!userText || userText.trim() === '') {
+            console.log('STT 결과가 유효하지 않음 - TTS로 재시도 메시지 재생');
+            
+            try {
+                // TTS로 "다시 말씀해주세요" 재생
+                const ttsResponse = await ttsApiService.synthesize({
+                    text: "죄송합니다. 음성을 인식할 수 없습니다. 다시 말씀해주세요.",
+                    voice: 'ko-KR-Wavenet-A',
+                    speed: 1.0,
+                    pitch: 0.0,
+                    volume: 0.0,
+                    format: 'MP3'
+                });
+
+                if (ttsResponse.status === 'success' && ttsResponse.audioData) {
+                    await ttsService.playAudio(ttsResponse.audioData, 'mp3');
+                    console.log('🎵 STT 에러 메시지 TTS 재생 완료');
+                } else {
+                    console.error('❌ STT 에러 메시지 TTS 응답이 유효하지 않음:', ttsResponse);
+                }
+            } catch (error) {
+                console.error('STT 에러 메시지 TTS 재생 실패:', error);
+            }
+            
+            // 마이크 버튼 다시 활성화
+            setIsQuestionComplete(true);
+            return;
+        }
+        
         try {
             setIsProcessingResponse(true);
             

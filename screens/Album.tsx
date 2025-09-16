@@ -41,53 +41,106 @@ export default function Album() {
 
     const userId = "1"; // 하드코딩된 사용자 ID
 
-    // 초기 데이터 로드 - 임시로 목 데이터만 사용
+    // 초기 데이터 로드 - 실제 API 호출
     useEffect(() => {
         console.log('Album 컴포넌트 마운트됨');
-        setDiaries(generateMockDiaries());
-        setLoading(false);
+        loadAlbumsFromAPI();
     }, []);
 
-    const handleDiaryPress = (diary: any) => {
+    const loadAlbumsFromAPI = async () => {
+        try {
+            setLoading(true);
+            console.log('사용자 대화 목록 API 호출 시작:', userId);
+            
+            const userAlbums = await conversationApiService.getConversationsByUser(userId);
+            console.log('API에서 받은 대화 목록:', userAlbums);
+            
+            // COMPLETED 상태인 대화만 필터링
+            const completedAlbums = userAlbums.filter(conversation => conversation.status === 'COMPLETED');
+            console.log('완료된 대화 목록:', completedAlbums);
+            
+            setAlbums(completedAlbums);
+            
+            // 감정 이름 매핑
+            const emotionMap: { [key: string]: string } = {
+                'happy': '기쁨',
+                'sad': '슬픔',
+                'angry': '분노',
+                'anxious': '불안',
+                'surprised': '당황',
+                'hurt': '상처'
+            };
+
+            // 대화 데이터를 일기 형태로 변환
+            const diaryData = completedAlbums.map(conversation => ({
+                id: conversation.id,
+                title: `${emotionMap[conversation.dominantEmotion] || conversation.dominantEmotion}의 하루`,
+                date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
+                    month: 'short',
+                    day: 'numeric'
+                }),
+                preview: conversation.diary ? conversation.diary.substring(0, 100) + '...' : '일기가 생성 중입니다...',
+                imageUrl: 'https://picsum.photos/200/200?random=' + conversation.id,
+                content: conversation.diary || '일기가 아직 생성되지 않았습니다.',
+                isPending: conversation.processingStatus !== 'COMPLETED'
+            }));
+            
+            setDiaries(diaryData);
+            console.log('일기 데이터 변환 완료:', diaryData);
+            
+        } catch (error) {
+            console.error('앨범 데이터 로드 실패:', error);
+            // API 실패 시 목업 데이터 사용
+            setDiaries(generateMockDiaries());
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDiaryPress = async (diary: any) => {
         // 일기 상세 화면으로 이동
         console.log('일기 선택:', diary.title);
         
-        // Context에서 일기 데이터 확인
-        const diaryFromContext = getDiaryById(diary.id);
-        
-        if (diaryFromContext && diaryFromContext.content) {
-            // Context에 내용이 있으면 바로 DiaryResult로 이동
-            navigation.navigate('DiaryResult', { 
-                diary: diaryFromContext.content 
-            });
-        } else {
-            // Context에 내용이 없으면 백엔드에서 조회 (나중에 구현)
-            console.log('백엔드에서 일기 상세 정보 조회 필요');
-            // TODO: diaryService.getDiary(diary.id) 호출
-            // navigation.navigate('DiaryResult', { diary: fetchedDiary.content });
+        try {
+            // 백엔드에서 일기 상세 정보 조회
+            console.log('일기 상세 정보 API 호출:', diary.id);
+            const diaryDetail = await conversationApiService.getDiaryByConversation(diary.id);
+            
+            if (diaryDetail) {
+                navigation.navigate('DiaryResult', {
+                    diary: diaryDetail.diary,
+                    conversationId: diaryDetail.conversationId,
+                    finalEmotion: diaryDetail.emotionSummary.dominantEmotion,
+                    userId: userId,
+                    musicRecommendations: diaryDetail.musicRecommendations
+                });
+            } else {
+                console.error('일기 상세 정보를 찾을 수 없습니다.');
+                // Context에서 일기 데이터 확인 (fallback)
+                const diaryFromContext = getDiaryById(diary.id);
+                if (diaryFromContext && diaryFromContext.content) {
+                    navigation.navigate('DiaryResult', { 
+                        diary: diaryFromContext.content 
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('일기 상세 조회 실패:', error);
+            // Context에서 일기 데이터 확인 (fallback)
+            const diaryFromContext = getDiaryById(diary.id);
+            if (diaryFromContext && diaryFromContext.content) {
+                navigation.navigate('DiaryResult', { 
+                    diary: diaryFromContext.content 
+                });
+            }
         }
     };
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
-            const userAlbums = await conversationApiService.getConversationsByUser(userId);
-            setAlbums(userAlbums);
-            
-            const diaryData = userAlbums.map(conversation => ({
-                id: conversation.id,
-                title: `${conversation.dominantEmotion}의 하루`,
-                date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
-                    month: 'short',
-                    day: 'numeric'
-                }),
-                preview: conversation.diary.substring(0, 100) + '...',
-                imageUrl: 'https://picsum.photos/200/200?random=' + conversation.id,
-                content: conversation.diary,
-                isPending: conversation.processingStatus !== 'READY'
-            }));
-            
-            setDiaries(diaryData);
+            console.log('앨범 새로고침 시작');
+            await loadAlbumsFromAPI();
         } catch (error) {
             console.error('앨범 새로고침 실패:', error);
         } finally {
@@ -142,6 +195,16 @@ export default function Album() {
             </View>
         </TouchableOpacity>
     );
+
+    if (loading) {
+        return (
+            <SafeAreaView className={`flex-1 justify-center items-center ${settings.isHighContrastMode ? 'bg-black' : 'bg-gray-50'}`}>
+                <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-500'}`}>
+                    일기를 불러오는 중...
+                </Text>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : 'bg-gray-50'}`}>

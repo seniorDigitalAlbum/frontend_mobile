@@ -1,4 +1,4 @@
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
@@ -9,7 +9,7 @@ import { Audio } from 'expo-av';
 import { useState, useEffect } from 'react';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { commonStyles } from '../styles/commonStyles';
-import YouTube from 'react-native-youtube';
+import { WebView } from 'react-native-webview';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
 
@@ -60,6 +60,11 @@ export default function DiaryResult({ route }: Props) {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    // YouTube 임베드 URL 생성 함수
+    const getYouTubeEmbedUrl = (videoId: string) => {
+        return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1`;
     };
 
     // 음악 자동 재생
@@ -125,44 +130,34 @@ export default function DiaryResult({ route }: Props) {
                 throw new Error('대화 ID가 없습니다');
             }
 
-            // 백엔드에 일기 저장 API 호출
-            const saveResponse = await conversationApiService.saveDiary({
-                conversationId: conversationId,
-                diary: diaryContent,
-                emotion: emotion,
-                musicRecommendations: displayData.musicRecommendations || []
-            });
+            // 로컬에 일기 추가 (이미 백엔드에서 생성된 일기)
+            const savedDiary = {
+                id: conversationId || Date.now(),
+                title: `오늘은 ${emotion}한 하루였어요`,
+                date: new Date().toLocaleDateString('ko-KR', {
+                    month: 'short',
+                    day: 'numeric'
+                }),
+                preview: diaryContent.substring(0, 100) + '...',
+                imageUrl: 'https://picsum.photos/200/200?random=' + Date.now(),
+                content: diaryContent,
+                isPending: false,
+            };
 
-            if (saveResponse) {
-                // 로컬에 일기 추가
-                const savedDiary = {
-                    id: saveResponse.id || Date.now(),
-                    title: `오늘은 ${emotion}한 하루였어요`,
-                    date: new Date().toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric'
-                    }),
-                    preview: diaryContent.substring(0, 100) + '...',
-                    imageUrl: 'https://picsum.photos/200/200?random=' + Date.now(),
-                    content: diaryContent,
-                    isPending: false,
-                };
+            addDiary(savedDiary);
 
-                addDiary(savedDiary);
-
-                // 앨범 페이지로 이동
-                navigation.reset({
-                    index: 0,
-                    routes: [
-                        { 
-                            name: 'MainTabs' as never,
-                            params: { 
-                                screen: 'Album' as never,
-                            }
+            // 앨범 페이지로 이동
+            navigation.reset({
+                index: 0,
+                routes: [
+                    { 
+                        name: 'MainTabs' as never,
+                        params: { 
+                            screen: 'Album' as never,
                         }
-                    ],
-                });
-            }
+                    }
+                ],
+            });
         } catch (error) {
             console.error('일기 저장 실패:', error);
             // 에러 발생 시에도 앨범으로 이동
@@ -239,23 +234,19 @@ export default function DiaryResult({ route }: Props) {
                             <Text className={`font-semibold mb-4 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
                                 🎵 추천 음악
                             </Text>
-                            <YouTube
-                                videoId={extractYouTubeId(displayData.musicRecommendations[currentMusicIndex]?.youtubeLink || '')}
-                                play={isPlaying}
-                                fullscreen={false}
-                                loop={false}
-                                apiKey="YOUR_YOUTUBE_API_KEY" // 실제 API 키로 교체 필요
-                                style={{ alignSelf: 'stretch', height: 200 }}
-                                onReady={() => console.log('YouTube 플레이어 준비 완료')}
-                                onChangeState={(e) => {
-                                    console.log('YouTube 상태 변경:', e.state);
-                                    if (e.state === 'ended') {
-                                        // 다음 음악으로 자동 전환
-                                        const nextIndex = (currentMusicIndex + 1) % displayData.musicRecommendations.length;
-                                        setCurrentMusicIndex(nextIndex);
-                                    }
+                            <WebView
+                                style={{ height: 200, width: '100%' }}
+                                source={{ 
+                                    uri: getYouTubeEmbedUrl(
+                                        displayData.musicRecommendations[currentMusicIndex]?.youtubeVideoId || 
+                                        extractYouTubeId(displayData.musicRecommendations[currentMusicIndex]?.youtubeLink || '') || 
+                                        'dQw4w9WgXcQ'
+                                    )
                                 }}
-                                onError={(e) => console.error('YouTube 플레이어 오류:', e.error)}
+                                allowsInlineMediaPlayback={true}
+                                mediaPlaybackRequiresUserAction={false}
+                                onError={(error) => console.error('YouTube 플레이어 오류:', error)}
+                                onLoad={() => console.log('YouTube 플레이어 로드 완료')}
                             />
                             <Text className={`mt-2 text-center ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-600'}`}>
                                 {displayData.musicRecommendations[currentMusicIndex]?.title} - {displayData.musicRecommendations[currentMusicIndex]?.artist}
