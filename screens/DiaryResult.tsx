@@ -9,6 +9,7 @@ import { Audio } from 'expo-av';
 import { useState, useEffect } from 'react';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { commonStyles } from '../styles/commonStyles';
+import YouTube from 'react-native-youtube';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
 
@@ -28,6 +29,7 @@ export default function DiaryResult({ route }: Props) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [diaryData, setDiaryData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [currentMusicIndex, setCurrentMusicIndex] = useState(0);
 
     // 일기 데이터 로드
     useEffect(() => {
@@ -53,6 +55,13 @@ export default function DiaryResult({ route }: Props) {
         loadDiaryData();
     }, [conversationId]);
 
+    // YouTube 비디오 ID 추출 함수
+    const extractYouTubeId = (url: string) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
     // 음악 자동 재생
     useEffect(() => {
         const playBackgroundMusic = async () => {
@@ -63,10 +72,6 @@ export default function DiaryResult({ route }: Props) {
                     const firstMusic = musicList[0];
                     console.log('배경음악 재생 시작:', firstMusic.title);
                     
-                    // YouTube 링크를 직접 재생할 수 없으므로, 
-                    // 실제 구현에서는 YouTube API나 다른 음악 서비스를 사용해야 합니다.
-                    // 여기서는 시뮬레이션으로 처리합니다.
-                    
                     // 오디오 모드 설정
                     await Audio.setAudioModeAsync({
                         allowsRecordingIOS: false,
@@ -76,8 +81,6 @@ export default function DiaryResult({ route }: Props) {
                         playThroughEarpieceAndroid: false,
                     });
                     
-                    // 실제 구현에서는 YouTube 링크를 오디오 스트림으로 변환하거나
-                    // 다른 음악 서비스 API를 사용해야 합니다.
                     console.log('음악 재생 준비 완료:', firstMusic.youtubeLink);
                     setIsPlaying(true);
                     
@@ -99,66 +102,72 @@ export default function DiaryResult({ route }: Props) {
         };
     }, [diaryData]);
 
-    // 감정에 따른 이모티콘 매핑
-    const getEmotionEmoji = (emotion: string) => {
-        const emotionMap: Record<string, string> = {
-            '기쁨': '😊',
-            '슬픔': '😢',
-            '분노': '😠',
-            '두려움': '😨',
-            '놀람': '😲',
-            '혐오': '🤢',
-            '그리움': '🥺',
-            '평온': '😌',
-            '설렘': '🥰',
-            '우울': '😔',
-            '행복': '😄',
-            '불안': '😰',
-            '화남': '😡',
-            '걱정': '😟',
-            '만족': '😌',
-            '감사': '🙏',
-            '사랑': '❤️',
-            '희망': '🌟',
-            '평범': '😐',
-            '피곤': '😴'
+    // 감정에 따른 이미지 매핑
+    const getEmotionImage = (emotion: string) => {
+        const emotionMap: Record<string, any> = {
+            '기쁨': require('../assets/happy.png'),
+            '슬픔': require('../assets/sad.jpg'),
+            '분노': require('../assets/angry.png'),
+            '두려움': require('../assets/fear.png'),
+            '놀람': require('../assets/surprised.png'),
+            '행복': require('../assets/happy.png'),
+            '화남': require('../assets/angry.png')
         };
-        return emotionMap[emotion] || '😊';
+        return emotionMap[emotion] || require('../assets/happy.png');
     };
 
     const handleSaveDiary = async () => {
-        const diaryContent = diaryData?.diary || diary;
-        const emotion = diaryData?.emotionSummary?.dominantEmotion || finalEmotion;
-        
-        // 임시 일기 데이터 생성 (프론트엔드에 즉시 추가)
-        const tempDiary = {
-            id: Date.now(), // 임시 ID
-            title: '오늘은 정말 특별한 하루였어요',
-            date: new Date().toLocaleDateString('ko-KR', {
-                month: 'short',
-                day: 'numeric'
-            }),
-            preview: diaryContent.substring(0, 100) + '...',
-            imageUrl: 'https://picsum.photos/200/200?random=' + Date.now(),
-            content: diaryContent, // 일기 전체 내용 저장
-            isPending: true, // 백엔드 저장 중 상태
-        };
+        try {
+            const diaryContent = diaryData?.diary || diary;
+            const emotion = diaryData?.emotionSummary?.dominantEmotion || finalEmotion;
+            
+            if (!conversationId) {
+                throw new Error('대화 ID가 없습니다');
+            }
 
-        // 일기는 자동으로 생성되므로 로컬에만 추가
-        addDiary(tempDiary);
-
-        // 앨범 페이지로 이동
-            navigation.reset({
-                index: 0,
-                routes: [
-                    { 
-                        name: 'MainTabs' as never,
-                        params: { 
-                            screen: 'Album' as never,
-                        }
-                    }
-                ],
+            // 백엔드에 일기 저장 API 호출
+            const saveResponse = await conversationApiService.saveDiary({
+                conversationId: conversationId,
+                diary: diaryContent,
+                emotion: emotion,
+                musicRecommendations: displayData.musicRecommendations || []
             });
+
+            if (saveResponse) {
+                // 로컬에 일기 추가
+                const savedDiary = {
+                    id: saveResponse.id || Date.now(),
+                    title: `오늘은 ${emotion}한 하루였어요`,
+                    date: new Date().toLocaleDateString('ko-KR', {
+                        month: 'short',
+                        day: 'numeric'
+                    }),
+                    preview: diaryContent.substring(0, 100) + '...',
+                    imageUrl: 'https://picsum.photos/200/200?random=' + Date.now(),
+                    content: diaryContent,
+                    isPending: false,
+                };
+
+                addDiary(savedDiary);
+
+                // 앨범 페이지로 이동
+                navigation.reset({
+                    index: 0,
+                    routes: [
+                        { 
+                            name: 'MainTabs' as never,
+                            params: { 
+                                screen: 'Album' as never,
+                            }
+                        }
+                    ],
+                });
+            }
+        } catch (error) {
+            console.error('일기 저장 실패:', error);
+            // 에러 발생 시에도 앨범으로 이동
+            navigation.navigate('MainTabs' as never);
+        }
     };
 
     const handleBackToHome = () => {
@@ -192,7 +201,7 @@ export default function DiaryResult({ route }: Props) {
                 <View className={`items-center ${settings.isLargeTextMode ? 'pt-20 pb-12' : 'pt-16 pb-10'}`}>
                     <View className={`${settings.isLargeTextMode ? 'w-32 h-32' : 'w-28 h-28'} bg-white rounded-full justify-center items-center mb-6 shadow-lg`}>
                         <Image 
-                            source={require('../assets/happy.png')} 
+                            source={getEmotionImage(displayData.emotionSummary?.dominantEmotion || finalEmotion)} 
                             className={`${settings.isLargeTextMode ? 'w-20 h-20' : 'w-16 h-16'}`}
                             resizeMode="contain"
                         />
@@ -201,7 +210,7 @@ export default function DiaryResult({ route }: Props) {
                     {isPlaying && displayData.musicRecommendations.length > 0 && (
                         <View className={`bg-green-100 rounded-full mb-2 ${settings.isLargeTextMode ? 'px-6 py-3' : 'px-4 py-2'}`}>
                             <Text className={`text-green-600 font-medium ${settings.isLargeTextMode ? 'text-base' : 'text-sm'}`}>
-                                🎵 {displayData.musicRecommendations[0].title} - {displayData.musicRecommendations[0].artist}
+                                🎵 {displayData.musicRecommendations[currentMusicIndex].title} - {displayData.musicRecommendations[currentMusicIndex].artist}
                             </Text>
                         </View>
                     )}
@@ -210,7 +219,7 @@ export default function DiaryResult({ route }: Props) {
                 {/* 제목 */}
                 <View className={`items-center ${settings.isLargeTextMode ? 'mb-8' : 'mb-6'}`}>
                     <Text className={`font-bold ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                        이 대화를 할 때 행복해 보였어요.
+                        이 대화를 할 때 {displayData.emotionSummary?.dominantEmotion || finalEmotion}해 보였어요.
                     </Text>
                 </View>
 
@@ -218,15 +227,66 @@ export default function DiaryResult({ route }: Props) {
                 <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
                     <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
                         <Text className={`leading-7 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-700'}`}>
-                            병원 복도에서 오랫동안 기다리던 끝에, 아기가 태어났다는 소식을 들었을 때 가슴이 콩닥콩닥 뛰었다. 간호사가 작은 아기를 내 품에 안겨주었을 때, 그 따뜻하고 작은 몸이 얼마나 소중하게 느껴졌는지 모른다.
-
-손바닥만 한 얼굴에 작은 손가락이 꼼지락거리는 걸 보니, 그냥 웃음이 터져 나왔다. "이 아이가 우리 집에 온 거구나" 하는 생각에 눈물이 핑 돌 정도로 기뻤다.
+                            {displayData.diary || diary}
                         </Text>
                     </View>
                 </View>
 
+                {/* YouTube 음악 플레이어 */}
+                {displayData.musicRecommendations.length > 0 && (
+                    <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
+                        <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
+                            <Text className={`font-semibold mb-4 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+                                🎵 추천 음악
+                            </Text>
+                            <YouTube
+                                videoId={extractYouTubeId(displayData.musicRecommendations[currentMusicIndex]?.youtubeLink || '')}
+                                play={isPlaying}
+                                fullscreen={false}
+                                loop={false}
+                                apiKey="YOUR_YOUTUBE_API_KEY" // 실제 API 키로 교체 필요
+                                style={{ alignSelf: 'stretch', height: 200 }}
+                                onReady={() => console.log('YouTube 플레이어 준비 완료')}
+                                onChangeState={(e) => {
+                                    console.log('YouTube 상태 변경:', e.state);
+                                    if (e.state === 'ended') {
+                                        // 다음 음악으로 자동 전환
+                                        const nextIndex = (currentMusicIndex + 1) % displayData.musicRecommendations.length;
+                                        setCurrentMusicIndex(nextIndex);
+                                    }
+                                }}
+                                onError={(e) => console.error('YouTube 플레이어 오류:', e.error)}
+                            />
+                            <Text className={`mt-2 text-center ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-600'}`}>
+                                {displayData.musicRecommendations[currentMusicIndex]?.title} - {displayData.musicRecommendations[currentMusicIndex]?.artist}
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
                 {/* 버튼들 */}
                 <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'} space-y-4`}>
+
+                    <TouchableOpacity
+                        onPress={handleSaveDiary}
+                        className={`w-full items-center ${settings.isLargeTextMode ? 'py-6' : 'py-4'}`}
+                        activeOpacity={0.8}
+                        style={[
+                            commonStyles.cardStyle, 
+                            { 
+                                backgroundColor: '#4F46E5',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 4,
+                                elevation: 3
+                            }
+                        ]}
+                    >
+                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} text-white`}>
+                            💾 일기 저장하기
+                        </Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={() => console.log('일기 공유하기')}

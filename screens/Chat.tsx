@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import DiaryLoading from '../components/DiaryLoading';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { API_BASE_URL } from '../config/api';
+import conversationApiService from '../services/api/conversationApiService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -57,36 +58,41 @@ export default function Chat({ route, navigation }: Props) {
         setIsGenerating(true);
         
         try {
-            // 백엔드로 데이터 전송 (나중에 구현)
-            console.log('백엔드로 데이터 전송 중...');
-            
-            // 임시로 3초 대기 (실제로는 백엔드 응답 대기)
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            console.log('일기 생성 완료!');
-            
-            // 생성된 일기를 DiaryResult 화면으로 전달
-            const generatedDiary = `오늘은 정말 특별한 하루였습니다. 친구들과 함께 공원에서 숨바꼭질을 하며 즐거운 시간을 보냈습니다. 
+            if (!conversationId) {
+                throw new Error('대화 ID가 없습니다');
+            }
 
-햇살이 따뜻하게 비치는 날씨 속에서 우리는 웃음소리를 내며 뛰어다녔고, 서로를 찾는 과정에서 더욱 친해질 수 있었습니다. 
-
-특히 숨는 곳을 찾는 재미와 찾는 사람의 긴장감이 어우러져서 정말 재미있었습니다. 이런 순간들이 모여 오늘 하루를 특별하게 만들어주었어요.
-
-내일도 이런 즐거운 일들이 가득했으면 좋겠습니다.`;
+            // 일기 조회 API 호출
+            const diaryResponse = await conversationApiService.getDiary(conversationId);
             
-            navigation.navigate('DiaryResult', { 
-                diary: generatedDiary,
-                conversationId,
-                finalEmotion: '기쁨', // 임시 감정, 나중에 실제 감정 분석 결과로 교체
-                userId
-            });
+            if (diaryResponse) {
+                // DiaryResult 화면으로 직접 이동
+                navigation.navigate('DiaryResult', {
+                    diary: diaryResponse.diary,
+                    conversationId: diaryResponse.conversationId,
+                    finalEmotion: diaryResponse.emotionSummary.dominantEmotion,
+                    userId: "1",
+                    musicRecommendations: diaryResponse.musicRecommendations
+                });
+            } else {
+                throw new Error('일기를 찾을 수 없습니다');
+            }
             
         } catch (error) {
             console.error('일기 생성 실패:', error);
+            // 에러 발생 시에도 DiaryResult로 이동 (기본값으로)
+            navigation.navigate('DiaryResult', {
+                diary: '일기를 불러올 수 없습니다. 다시 시도해주세요.',
+                conversationId: conversationId,
+                finalEmotion: '평범',
+                userId: "1",
+                musicRecommendations: []
+            });
         } finally {
             setIsGenerating(false);
         }
     };
+
 
     // 로딩 중일 때는 로딩 화면 표시
     if (isGenerating || isLoading) {

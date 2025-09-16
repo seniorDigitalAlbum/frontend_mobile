@@ -88,7 +88,7 @@ export default function HiddenCamera({
                 setIsImageSending(true);
                 onRecordingStartRef.current?.();
                 
-                // 5초마다 이미지 캡처하여 AI 서버로 전송 (setTimeout 재귀 사용)
+                // 1초마다 이미지 캡처하여 AI 서버로 전송 (setTimeout 재귀 사용)
                 console.log('📸 이미지 캡처 타이머 시작...');
                 
                 const captureImage = async () => {
@@ -138,11 +138,11 @@ export default function HiddenCamera({
                         console.error('📸 카메라 참조가 없음');
                     }
                     
-                    // 5초 후 다시 실행 (녹음 중일 때만)
+                    // 1초 후 다시 실행 (녹음 중일 때만)
                     // ref를 사용해서 최신 상태 확인
                     if (isRecordingRef.current && isImageSendingRef.current) {
-                        intervalRef.current = setTimeout(captureImage, 5000);
-                        console.log('📸 다음 이미지 캡처 예약됨 (5초 후)');
+                        intervalRef.current = setTimeout(captureImage, 1000);
+                        console.log('📸 다음 이미지 캡처 예약됨 (1초 후)');
                     } else {
                         console.log('📸 녹음 종료됨 - 이미지 캡처 중단');
                     }
@@ -152,12 +152,12 @@ export default function HiddenCamera({
                 console.log('📸 즉시 이미지 캡처 테스트 시작...');
                 captureImage();
                 
-                // 5초 후에도 실행
+                // 1초 후에도 실행
                 intervalRef.current = setTimeout(() => {
                     console.log('📸 setTimeout 콜백 실행됨!');
                     captureImage();
-                }, 5000);
-                console.log('📸 첫 번째 이미지 캡처 예약됨 (5초 후)');
+                }, 1000);
+                console.log('📸 첫 번째 이미지 캡처 예약됨 (1초 후)');
             } else if (!isRecording && isImageSending) {
                 // 녹음 종료 - 이미지 전송 중단
                 setIsImageSending(false);

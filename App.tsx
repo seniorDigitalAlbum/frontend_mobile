@@ -36,6 +36,7 @@ import Conversation from './screens/Conversation';
 import Chat from './screens/Chat';
 import DiaryResult from './screens/DiaryResult';
 import DiaryLoading from './screens/DiaryLoading';
+import ConversationEndLoading from './screens/ConversationEndLoading';
 import ConversationFlow from './components/ConversationFlow';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -94,6 +95,9 @@ export type RootStackParamList = {
     }>;
   };
   DiaryLoading: undefined;
+  ConversationEndLoading: {
+    conversationId?: number;
+  };
 };
 
 // 네비게이터 인스턴스 생성
@@ -332,6 +336,9 @@ export default function App() {
             
             {/* 일기 생성 로딩 화면 */}
             <Stack.Screen name="DiaryLoading" component={DiaryLoading} />
+            
+            {/* 대화 종료 로딩 화면 */}
+            <Stack.Screen name="ConversationEndLoading" component={ConversationEndLoading} />
           </Stack.Navigator>
         </NavigationContainer>
       </ConversationProvider>

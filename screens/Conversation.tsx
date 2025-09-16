@@ -107,11 +107,10 @@ export default function Conversation({ route, navigation }: Props) {
                 console.log('대화 세션 종료됨:', endResponse);
                 
                 if (endResponse && endResponse.status === 'COMPLETED') {
-                    // 일기 생성 로딩 화면으로 이동
-                    navigation.navigate('DiaryLoading');
-                    
-                    // 백그라운드에서 처리 상태 확인 및 일기 조회
-                    await checkProcessingAndGetDiary(conversationId);
+                    // 로딩 화면 표시 후 Chat으로 이동
+                    navigation.navigate('ConversationEndLoading', {
+                        conversationId: conversationId
+                    });
                 }
             }
         } catch (error) {
@@ -178,8 +177,11 @@ export default function Conversation({ route, navigation }: Props) {
                     return acc;
                 }, {} as Record<string, number>);
 
-                const averageConfidence = emotionCaptures.reduce((sum, capture) => sum + capture.confidence, 0) / emotionCaptures.length;
                 const finalEmotion = Object.keys(emotionCounts).reduce((a, b) => emotionCounts[a] > emotionCounts[b] ? a : b);
+                
+                // 가장 많이 감지된 감정의 평균 신뢰도 계산
+                const finalEmotionCaptures = emotionCaptures.filter(capture => capture.emotion === finalEmotion);
+                const averageConfidence = finalEmotionCaptures.reduce((sum, capture) => sum + capture.confidence, 0) / finalEmotionCaptures.length;
 
                 console.log('감정 분석 결과 전송 - conversationMessageId:', conversationMessageId);
                 
