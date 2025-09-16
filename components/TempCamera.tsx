@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Alert, Linking, Dimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import AICharacter from './AICharacter';
 
 interface TempCameraProps {
@@ -46,8 +47,26 @@ export default function TempCamera({ onFaceDetected, onCapture, onCameraReady, n
     }
   };
 
+  // 카메라 소리 없애기
+  const setupSilentCamera = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+      });
+    } catch (error) {
+      console.log('오디오 모드 설정 실패:', error);
+    }
+  };
+
   useEffect(() => {
     checkPermissions();
+    setupSilentCamera(); // 카메라 소리 없애기 설정
   }, [permission]);
 
   // 카메라가 준비되면 얼굴 인식 시작
@@ -153,9 +172,13 @@ export default function TempCamera({ onFaceDetected, onCapture, onCameraReady, n
   const takePicture = async () => {
     if (cameraRef.current) {
       try {
+        // 촬영 전에 오디오 모드 재설정
+        await setupSilentCamera();
+        
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
           base64: true,
+          skipProcessing: true, // 소리 없이 촬영
         });
         
         if (onCapture) {
@@ -212,7 +235,7 @@ export default function TempCamera({ onFaceDetected, onCapture, onCameraReady, n
         facing={facing}
         ref={cameraRef}
         zoom={zoom}
-        animateShutter={true}
+        animateShutter={false}
         flash={flash}
         onCameraReady={handleCameraReady}
       >

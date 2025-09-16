@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "narim",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["audio"],
+        "AVAudioSessionCategory": "playback"
       }
     },
     "android": {
@@ -28,7 +30,8 @@
       "package": "com.anonymous.dearmind_fe",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {

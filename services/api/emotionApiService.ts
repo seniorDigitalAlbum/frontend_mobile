@@ -47,22 +47,35 @@ export interface FacialEmotionAnalysisResponse {
 export const predictEmotionApi = async (imageUri: string): Promise<EmotionAnalysisResult | null> => {
   try {
     const apiUrl = `${getYoloEmotionApiUrl()}/predict_emotion`;
-    console.log('🌐 감정 분석 API URL:', apiUrl);
     
-    // 먼저 서버 연결 테스트
-    console.log('🔍 서버 연결 테스트 시작...');
+    // 먼저 서버 연결 테스트 (POST 메서드로)
+    console.log('서버 연결 테스트 시작');
     try {
+      const testFormData = new FormData();
+      testFormData.append('test', 'connection');
+      
       const testResponse = await fetch(apiUrl, {
-        method: 'GET',
+        method: 'POST',
+        body: testFormData,
       });
-      console.log('🔍 서버 연결 테스트 응답:', testResponse.status, testResponse.statusText);
+      console.log('서버 연결 테스트 응답:', testResponse.status, testResponse.statusText);
     } catch (testError) {
-      console.error('🔍 서버 연결 테스트 실패:', testError);
+      console.error('서버 연결 테스트 실패:', testError);
     }
     
     // Base64 데이터를 Blob으로 변환
     const base64Data = imageUri.split(',')[1];
-    const byteCharacters = atob(base64Data);
+    
+    // Base64 데이터 유효성 검사
+    if (!base64Data || base64Data.length % 4 !== 0) {
+      console.error('잘못된 Base64 데이터:', base64Data?.substring(0, 50) + '...');
+      return null;
+    }
+    
+    // Base64 패딩 추가 (필요한 경우)
+    const paddedBase64 = base64Data + '='.repeat((4 - base64Data.length % 4) % 4);
+    
+    const byteCharacters = atob(paddedBase64);
     const byteNumbers = new Array(byteCharacters.length);
     for (let i = 0; i < byteCharacters.length; i++) {
       byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -73,30 +86,30 @@ export const predictEmotionApi = async (imageUri: string): Promise<EmotionAnalys
     const formData = new FormData();
     formData.append('file', blob, 'image.jpg');
 
-    console.log('📤 FormData 생성 완료, API 요청 전송 중...');
-    console.log('📤 전송할 이미지 URI:', imageUri);
+    console.log('FormData 생성 완료, API 요청 전송 중...');
+    console.log('전송할 이미지 URI:', imageUri);
     
     const response = await fetch(apiUrl, {
       method: 'POST',
       body: formData,
     });
 
-    console.log('📥 API 응답 상태:', response.status, response.statusText);
-    console.log('📥 API 응답 헤더:', response.headers);
+    console.log('API 응답 상태:', response.status, response.statusText);
+    console.log('API 응답 헤더:', response.headers);
 
     if (response.ok) {
       const result = await response.json();
-      console.log('✅ 감정 분석 성공:', result);
+      console.log('감정 분석 성공:', result);
       return result;
     } else {
       const errorText = await response.text();
-      console.error('❌ 감정 분석 API 호출 실패:', response.status, response.statusText);
-      console.error('❌ 에러 응답 내용:', errorText);
+      console.error('감정 분석 API 호출 실패:', response.status, response.statusText);
+      console.error('에러 응답 내용:', errorText);
       return null;
     }
     } catch (error) {
-      console.error('💥 감정 분석 API 호출 중 오류:', error);
-      console.error('💥 오류 상세:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('감정 분석 API 호출 중 오류:', error);
+      console.error('오류 상세:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
 };
@@ -127,7 +140,7 @@ export const sendFacialEmotionAnalysis = async (
       }
     };
     
-    console.log('📊 변환된 요청 데이터:', requestData);
+    console.log('변환된 요청 데이터:', requestData);
     
     const response = await fetch(`${API_BASE_URL}/api/emotion-analysis/facial`, {
       method: 'POST',
@@ -142,10 +155,10 @@ export const sendFacialEmotionAnalysis = async (
     }
 
     const result = await response.json();
-    console.log('✅ 얼굴 감정 분석 결과 전송 성공:', result);
+    console.log('얼굴 감정 분석 결과 전송 성공:', result);
     return result;
   } catch (error) {
-    console.error('❌ 얼굴 감정 분석 결과 전송 실패:', error);
+    console.error('얼굴 감정 분석 결과 전송 실패:', error);
     return null;
   }
 };
