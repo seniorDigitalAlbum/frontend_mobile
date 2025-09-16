@@ -19,7 +19,6 @@ import { View, Text, Alert } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import PermissionManager from './PermissionManager';
 import CameraPreviewTest from './CameraPreviewTest';
-import MicrophoneTest from './MicrophoneTest';
 import sessionManager from '../services/sessionManager';
 import userResponseProcessor from '../services/userResponseProcessor';
 import ttsService from '../services/audio/ttsService';
@@ -86,6 +85,16 @@ export default function ConversationFlow({
           microphoneSessionId: state.sessionIds.microphoneSessionId
         });
         break;
+      case 'mic_test':
+        // MicrophoneTest 화면으로 네비게이션
+        navigation.navigate('MicrophoneTest', {
+          questionText: state.conversationInfo.questionText,
+          questionId: state.conversationInfo.questionId,
+          conversationId: state.conversationInfo.conversationId,
+          cameraSessionId: state.sessionIds.cameraSessionId,
+          microphoneSessionId: state.sessionIds.microphoneSessionId
+        });
+        break;
       case 'tts_playback':
         handleTTSPlayback();
         break;
@@ -96,12 +105,28 @@ export default function ConversationFlow({
 
   /**
    * 화면 포커스 시 카메라 테스트 완료 확인
-   * CameraTest 화면에서 돌아왔을 때 대화 세션 생성 후 다음 단계로 진행
+   * CameraTest 화면에서 돌아왔을 때 마이크 테스트 단계로 진행
    */
   useFocusEffect(
     React.useCallback(() => {
       // 포커스 시 카메라 테스트 완료 처리
       if (state.currentStep === 'camera_test') {
+        setTimeout(() => {
+          dispatch(conversationActions.setCameraTestResult('success'));
+          dispatch(conversationActions.setStep('mic_test'));
+        }, 100);
+      }
+    }, [state.currentStep, dispatch])
+  );
+
+  /**
+   * 화면 포커스 시 마이크 테스트 완료 확인
+   * MicrophoneTest 화면에서 돌아왔을 때 대화 세션 생성 후 다음 단계로 진행
+   */
+  useFocusEffect(
+    React.useCallback(() => {
+      // 포커스 시 마이크 테스트 완료 처리
+      if (state.currentStep === 'mic_test') {
         setTimeout(async () => {
           try {
                  // 대화 세션 시작 API 호출
@@ -121,8 +146,6 @@ export default function ConversationFlow({
 
                  // 대화 정보 업데이트 (initialize 액션 사용)
                  // Home에서 선택한 질문 텍스트를 그대로 사용
-                 // console.log('Home에서 받은 원본 questionText:', questionText);
-                 // console.log('Context의 questionText:', state.conversationInfo.questionText);
                  dispatch(conversationActions.initialize({
                    ...state.conversationInfo,
                    conversationId: startResponse.conversationId.toString(),
@@ -130,7 +153,6 @@ export default function ConversationFlow({
                    questionId: startResponse.question.id
                  }));
 
-            dispatch(conversationActions.setCameraTestResult('success'));
             dispatch(conversationActions.setMicrophoneTestResult('success'));
             dispatch(conversationActions.setStep('tts_playback'));
           } catch (error) {
@@ -407,11 +429,11 @@ export default function ConversationFlow({
 
       // B-3: 마이크 테스트 단계
       case 'mic_test':
+        // MicrophoneTest 화면으로 네비게이션은 useEffect에서 처리
         return (
-          <MicrophoneTest
-            onTestPassed={handleMicTestPassed}
-            onTestFailed={handleMicTestFailed}
-          />
+          <View className="flex-1 justify-center items-center bg-white">
+            <Text className="text-lg text-gray-600">마이크 테스트 화면으로 이동 중...</Text>
+          </View>
         );
 
       // C-1: AI 질문 TTS 재생 단계

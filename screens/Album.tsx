@@ -5,7 +5,7 @@ import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { albumApiService, Album as AlbumType } from '../services/api/albumApiService';
+import { conversationApiService, Conversation as ConversationType } from '../services/api/albumApiService';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -34,7 +34,7 @@ export default function Album() {
     const { state, setDiaries, getDiaryById } = useDiary();
     const { settings } = useAccessibility();
     const [refreshing, setRefreshing] = useState(false);
-    const [albums, setAlbums] = useState<AlbumType[]>([]);
+    const [albums, setAlbums] = useState<ConversationType[]>([]);
     const [loading, setLoading] = useState(true);
     const navigation = useNavigation<NavigationProp>();
     const isLoadingRef = useRef(false);
@@ -71,20 +71,20 @@ export default function Album() {
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         try {
-            const userAlbums = await albumApiService.getAlbumsByUser(userId);
+            const userAlbums = await conversationApiService.getConversationsByUser(userId);
             setAlbums(userAlbums);
             
-            const diaryData = userAlbums.map(album => ({
-                id: album.id,
-                title: `${album.finalEmotion}의 하루`,
-                date: new Date(album.createdAt).toLocaleDateString('ko-KR', {
+            const diaryData = userAlbums.map(conversation => ({
+                id: conversation.id,
+                title: `${conversation.dominantEmotion}의 하루`,
+                date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
                     month: 'short',
                     day: 'numeric'
                 }),
-                preview: album.diaryContent.substring(0, 100) + '...',
-                imageUrl: 'https://picsum.photos/200/200?random=' + album.id,
-                content: album.diaryContent,
-                isPending: false
+                preview: conversation.diary.substring(0, 100) + '...',
+                imageUrl: 'https://picsum.photos/200/200?random=' + conversation.id,
+                content: conversation.diary,
+                isPending: conversation.processingStatus !== 'READY'
             }));
             
             setDiaries(diaryData);

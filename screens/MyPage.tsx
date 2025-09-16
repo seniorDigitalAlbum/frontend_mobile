@@ -50,7 +50,7 @@ export default function MyPage() {
           {profile.profileImage ? (
             <Image 
               source={{ uri: profile.profileImage }} 
-              className="w-32 h-32 rounded-full mb-6"
+              className="w-32 h-32 rounded-full mb-6 profile-image"
             />
           ) : (
             <View className="w-32 h-32 bg-blue-100 rounded-full items-center justify-center mb-6">
@@ -93,10 +93,10 @@ export default function MyPage() {
           </View>
 
           {/* 고대비 모드 토글 */}
-          <View className="flex-row items-center justify-between py-4 border-b border-gray-200">
+          {/* <View className="flex-row items-center justify-between py-4 border-b border-gray-200">
             <View className="flex-1">
               <Text className={`text-lg font-medium ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                고대비 모드
+                야간
               </Text>
               <Text className={`text-sm mt-1 ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
                 화면의 대비를 높여 가독성을 개선합니다
@@ -108,7 +108,7 @@ export default function MyPage() {
               trackColor={{ false: '#767577', true: '#81b0ff' }}
               thumbColor={settings.isHighContrastMode ? '#f5dd4b' : '#f4f3f4'}
             />
-          </View>
+          </View> */}
 
 
         </View>

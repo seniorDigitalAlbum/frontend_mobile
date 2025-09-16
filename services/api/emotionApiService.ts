@@ -1,4 +1,4 @@
-import { API_BASE_URL, API_ENDPOINTS, getEmotionApiUrl } from '../../config/api';
+import { API_BASE_URL, API_ENDPOINTS, getYoloEmotionApiUrl } from '../../config/api';
 
 // 감정 분석 결과 타입 정의
 export interface EmotionAnalysisResult {
@@ -46,7 +46,7 @@ export interface FacialEmotionAnalysisResponse {
  */
 export const predictEmotionApi = async (imageUri: string): Promise<EmotionAnalysisResult | null> => {
   try {
-    const apiUrl = `${getEmotionApiUrl()}/predict_emotion`;
+    const apiUrl = `${getYoloEmotionApiUrl()}/predict_emotion`;
     console.log('🌐 감정 분석 API URL:', apiUrl);
     
     // 먼저 서버 연결 테스트

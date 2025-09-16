@@ -52,6 +52,9 @@ module.exports = {
         '20-large': '96px',      // 80 * 1.2
         '24-large': '115.2px',   // 96 * 1.2
       },
+      boxShadow: {
+        'card': '0 8px 32px rgba(153, 153, 153, 0.1)',
+      },
     },
   },
   plugins: [],

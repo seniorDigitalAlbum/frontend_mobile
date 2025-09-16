@@ -55,11 +55,26 @@
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), transparent, rgba(255, 255, 255, 0.3));
 }
 
+/* CSS 변수 정의 */
+:root {
+  --font-size-base: 1em;
+  --font-size-lg: 1.125em;
+  --font-size-xl: 1.25em;
+  --font-size-2xl: 1.5em;
+  --line-height-base: 1.5;
+  --padding-base: 1rem;
+  --margin-base: 1rem;
+  --bg-primary: transparent;
+  --text-primary: inherit;
+  --bg-secondary: inherit;
+  --text-secondary: inherit;
+}
+
 /* 큰 글씨 모드 CSS 클래스 */
 .large-text-mode {
-  /* 폰트 크기 증가 */
-  font-size: 1.3em !important;
-  line-height: 1.4 !important;
+  /* CSS 변수를 통한 폰트 크기 증가 */
+  font-size: var(--font-size-base, 1.4em) !important;
+  line-height: var(--line-height-base, 1.6) !important;
 }
 
 .large-text-mode h1 {
@@ -94,52 +109,208 @@
   min-height: 3em !important;
 }
 
+/* 큰 글씨 모드 - 텍스트만 크게 */
+.large-text-mode {
+  font-size: 1.4em !important;
+  line-height: 1.6 !important;
+}
+
+/* 큰 글씨 모드에서 텍스트 요소들 */
+.large-text-mode p,
+.large-text-mode span,
+.large-text-mode div:not([class*="icon"]):not([style*="font-family: ionicons"]),
+.large-text-mode button:not([class*="icon"]),
+.large-text-mode input,
+.large-text-mode textarea,
+.large-text-mode label,
+.large-text-mode h1,
+.large-text-mode h2,
+.large-text-mode h3,
+.large-text-mode h4,
+.large-text-mode h5,
+.large-text-mode h6 {
+  font-size: 1.4em !important;
+  line-height: 1.6 !important;
+}
+
+/* 아이콘과 이미지는 크기 유지 */
+.large-text-mode svg,
+.large-text-mode img,
+.large-text-mode .icon,
+.large-text-mode [class*="icon"],
+.large-text-mode i,
+.large-text-mode .ionicon,
+.large-text-mode .expo-icon,
+.large-text-mode [class*="ionicon"],
+.large-text-mode [class*="r-userSelect"],
+.large-text-mode [class*="css-text"],
+.large-text-mode div[class*="css-text"],
+.large-text-mode div[style*="font-family: ionicons"],
+.large-text-mode div[style*="font-family: 'ionicons'"],
+.large-text-mode [class*="css-text"][style*="font-family: ionicons"],
+.large-text-mode [class*="css-text"][style*="font-family: 'ionicons'"],
+.large-text-mode [style*="font-family: ionicons"],
+.large-text-mode [style*="font-family: 'ionicons'"] {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+}
+
+/* 프로필 이미지 크기 유지 */
+.large-text-mode .profile-image,
+.large-text-mode .avatar,
+.large-text-mode .profile-picture,
+.large-text-mode .user-image,
+.large-text-mode .hero-image,
+.large-text-mode .large-image,
+.large-text-mode .album-image {
+  font-size: 1em !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 128px !important;
+  max-height: 128px !important;
+}
+
+/* 큰 글씨 모드에서 아이콘 폰트 강제 제한 */
+.large-text-mode div[style*="font-family: ionicons"],
+.large-text-mode div[style*="font-family: 'ionicons'"],
+.large-text-mode [class*="css-text"][style*="font-family: ionicons"],
+.large-text-mode [class*="css-text"][style*="font-family: 'ionicons'"],
+.large-text-mode [style*="font-family: ionicons"],
+.large-text-mode [style*="font-family: 'ionicons'"] {
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+  min-width: 1em !important;
+  min-height: 1em !important;
+}
+
+/* 큰 글씨 모드에서 제목 크기 조정 */
+.large-text-mode h1 {
+  font-size: var(--font-size-2xl, 2.2em) !important;
+  line-height: 1.2 !important;
+}
+
+.large-text-mode h2 {
+  font-size: var(--font-size-xl, 1.8em) !important;
+  line-height: 1.3 !important;
+}
+
+.large-text-mode h3 {
+  font-size: var(--font-size-lg, 1.6em) !important;
+  line-height: 1.3 !important;
+}
+
+/* 큰 글씨 모드에서 버튼과 입력 필드 크기 조정 */
+.large-text-mode button,
+.large-text-mode input,
+.large-text-mode textarea,
+.large-text-mode [role="button"] {
+  font-size: var(--font-size-base, 1.4em) !important;
+  padding: var(--padding-base, 1.2em) !important;
+  min-height: 3.5em !important;
+}
+
+/* 큰 글씨 모드에서 아이콘 크기 제한 (작은 아이콘만) */
+.large-text-mode svg,
+.large-text-mode .icon,
+.large-text-mode [class*="icon"],
+.large-text-mode i,
+.large-text-mode .ionicon,
+.large-text-mode .expo-icon,
+.large-text-mode [class*="ionicon"],
+.large-text-mode [class*="r-userSelect"],
+.large-text-mode [class*="css-text"],
+.large-text-mode div[class*="css-text"],
+.large-text-mode div[style*="font-family: ionicons"] {
+  width: 1em !important;
+  height: 1em !important;
+  min-width: 1em !important;
+  min-height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+  font-size: 1em !important;
+}
+
+/* 큰 글씨 모드에서 작은 이미지 (아이콘용) 크기 제한 */
+.large-text-mode img[width],
+.large-text-mode img[height],
+.large-text-mode .small-image,
+.large-text-mode .icon-image {
+  width: 1em !important;
+  height: 1em !important;
+  min-width: 1em !important;
+  min-height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+}
+
+/* 큰 글씨 모드에서 프로필 이미지나 큰 이미지는 크기 유지 */
+.large-text-mode .profile-image,
+.large-text-mode .avatar,
+.large-text-mode .profile-picture,
+.large-text-mode .user-image,
+.large-text-mode .hero-image,
+.large-text-mode .large-image,
+.large-text-mode .album-image {
+  width: auto !important;
+  height: auto !important;
+  max-width: 128px !important;
+  max-height: 128px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+}
+
 /* 큰 글씨 모드에서 여백 조정 */
 .large-text-mode .p-2 {
-  padding: 0.6rem !important;
+  padding: var(--padding-base, 1.2em) !important;
 }
 
 .large-text-mode .p-4 {
-  padding: 1rem !important;
+  padding: calc(var(--padding-base, 1.2em) * 1.5) !important;
 }
 
 .large-text-mode .p-6 {
-  padding: 1.5rem !important;
+  padding: calc(var(--padding-base, 1.2em) * 2) !important;
 }
 
 .large-text-mode .m-2 {
-  margin: 0.6rem !important;
+  margin: var(--margin-base, 1.2em) !important;
 }
 
 .large-text-mode .m-4 {
-  margin: 1rem !important;
+  margin: calc(var(--margin-base, 1.2em) * 1.5) !important;
 }
 
 .large-text-mode .m-6 {
-  margin: 1.5rem !important;
+  margin: calc(var(--margin-base, 1.2em) * 2) !important;
 }
 
 /* 고대비 모드 */
 .high-contrast-mode {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+  background-color: var(--bg-primary, #000000) !important;
+  color: var(--text-primary, #ffffff) !important;
 }
 
 .high-contrast-mode button {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 2px solid #ffffff !important;
+  background-color: var(--bg-secondary, #ffffff) !important;
+  color: var(--text-secondary, #000000) !important;
+  border: 2px solid var(--bg-secondary, #ffffff) !important;
 }
 
 .high-contrast-mode input {
-  background-color: #000000 !important;
-  color: #ffffff !important;
-  border: 2px solid #ffffff !important;
+  background-color: var(--bg-primary, #000000) !important;
+  color: var(--text-primary, #ffffff) !important;
+  border: 2px solid var(--bg-secondary, #ffffff) !important;
 }
 
 .high-contrast-mode .glass-effect {
   background: rgba(255, 255, 255, 0.1) !important;
-  border: 2px solid #ffffff !important;
+  border: 2px solid var(--bg-secondary, #ffffff) !important;
 }
 
 /* 시니어 접근성 가이드라인 - 큰 글씨 모드 */
@@ -168,15 +339,16 @@
   border-radius: 0.8em !important;
 }
 
-/* 아이콘 크기 자동 조정 */
+/* 아이콘 크기 제한 (기존 규칙과 통합) - 작은 아이콘만 */
 .large-text-mode .icon,
 .large-text-mode [class*="icon"],
-.large-text-mode svg,
-.large-text-mode img {
-  width: 1.4em !important;
-  height: 1.4em !important;
-  min-width: 1.4em !important;
-  min-height: 1.4em !important;
+.large-text-mode svg {
+  width: 1em !important;
+  height: 1em !important;
+  min-width: 1em !important;
+  min-height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
 }
 
 /* 큰 글씨 모드에서 스택 레이아웃으로 변경 - 가로 배치를 세로 배치로 */
@@ -378,11 +550,68 @@
   outline-offset: 2px !important;
 }
 
-/* 고대비 모드에서 아이콘과 이미지 */
+/* 고대비 모드에서 아이콘 크기 제한 (작은 아이콘만) */
 .high-contrast-mode .icon,
 .high-contrast-mode [class*="icon"],
 .high-contrast-mode svg,
-.high-contrast-mode img {
+.high-contrast-mode [class*="ionicon"],
+.high-contrast-mode [class*="r-userSelect"],
+.high-contrast-mode [class*="css-text"],
+.high-contrast-mode div[class*="css-text"],
+.high-contrast-mode div[style*="font-family: ionicons"] {
   filter: invert(1) !important;
   border: 1px solid #ffffff !important;
+  width: 1em !important;
+  height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+}
+
+/* 고대비 모드에서 아이콘 폰트 강제 제한 */
+.high-contrast-mode div[style*="font-family: ionicons"],
+.high-contrast-mode div[style*="font-family: 'ionicons'"],
+.high-contrast-mode [class*="css-text"][style*="font-family: ionicons"],
+.high-contrast-mode [class*="css-text"][style*="font-family: 'ionicons'"],
+.high-contrast-mode [style*="font-family: ionicons"],
+.high-contrast-mode [style*="font-family: 'ionicons'"] {
+  filter: invert(1) !important;
+  border: 1px solid #ffffff !important;
+  font-size: 1em !important;
+  width: 1em !important;
+  height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+  min-width: 1em !important;
+  min-height: 1em !important;
+}
+
+/* 고대비 모드에서 작은 이미지 (아이콘용) 크기 제한 */
+.high-contrast-mode img[width],
+.high-contrast-mode img[height],
+.high-contrast-mode .small-image,
+.high-contrast-mode .icon-image {
+  filter: invert(1) !important;
+  border: 1px solid #ffffff !important;
+  width: 1em !important;
+  height: 1em !important;
+  max-width: 1em !important;
+  max-height: 1em !important;
+}
+
+/* 고대비 모드에서 프로필 이미지나 큰 이미지는 크기 유지 */
+.high-contrast-mode .profile-image,
+.high-contrast-mode .avatar,
+.high-contrast-mode .profile-picture,
+.high-contrast-mode .user-image,
+.high-contrast-mode .hero-image,
+.high-contrast-mode .large-image,
+.high-contrast-mode .album-image {
+  filter: invert(1) !important;
+  border: 1px solid #ffffff !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 128px !important;
+  max-height: 128px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
 }

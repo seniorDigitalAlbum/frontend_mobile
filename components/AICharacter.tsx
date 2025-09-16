@@ -3,8 +3,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function AICharacter() {
     return (
-        <View className="w-32 h-32 justify-center items-center mb-6">
-            <Image source={require('../assets/character.png')} className="w-40 h-40" />
+        <View className="w-20 h-20 justify-center items-center overflow-hidden">
+            <Image 
+                source={require('../assets/character.png')} 
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+            />
         </View>
     );
 } 

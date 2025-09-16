@@ -17,14 +17,21 @@ const isDevelopment = __DEV__;
 const isWeb = Platform.OS === 'web';
 
 
-// 감정 분석 API용 동적 IP 가져오는 함수
-export const getEmotionApiUrl = () => {
+// YOLO 감정 분석 API용 동적 IP 가져오는 함수
+export const getYoloEmotionApiUrl = () => {
   if (isDevelopment) {
-    // 개발 환경에서는 실제 AI 서버 주소 사용
-    return 'http://127.0.0.1:8000';
+    return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_DEV || 'http://emotion_yolo:8000';
   } else {
-    // 프로덕션 환경
-    return 'http://127.0.0.1:8000';
+    return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_PROD || 'http://emotion_yolo:8000';
+  }
+};
+
+// KoBERT 감정 분석 API용 동적 IP 가져오는 함수
+export const getKoBERTApiUrl = () => {
+  if (isDevelopment) {
+    return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV || 'http://emotion_kobert:8001';
+  } else {
+    return process.env.EXPO_PUBLIC_KOBERT_API_URL_PROD || 'http://emotion_kobert:8001';
   }
 };
 

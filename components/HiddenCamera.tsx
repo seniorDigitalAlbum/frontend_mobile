@@ -98,10 +98,11 @@ export default function HiddenCamera({
                     
                     if (cameraRef.current) {
                         try {
-                            // 이미지 캡처
+                            // 이미지 캡처 (소리 없이)
                             const photo = await cameraRef.current.takePictureAsync({
                                 quality: 0.8,
                                 base64: false, // form-data로 전송하므로 base64 불필요
+                                skipProcessing: true, // 빠른 처리
                             });
                             
                             console.log('📸 이미지 캡처 완료:', photo?.uri);
@@ -191,6 +192,8 @@ export default function HiddenCamera({
                 zoom={0}
                 animateShutter={false}
                 flash="off"
+                enableTorch={false}
+                enableZoomGesture={false}
             />
         </View>
     );

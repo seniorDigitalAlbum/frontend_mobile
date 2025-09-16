@@ -28,6 +28,7 @@ import Home from './screens/Home';
 import Album from './screens/Album';
 import MyPage from './screens/MyPage';
 import CameraTest from './screens/CameraTest';
+import MicrophoneTest from './screens/MicrophoneTest';
 import Notification from './screens/Notification';
 // import AIChat from './screens/AIChat'; // 사용되지 않는 화면
 // import UserAnswer from './screens/UserAnswer'; // 사용되지 않는 화면
@@ -46,6 +47,13 @@ export type RootStackParamList = {
   Login: undefined;                    // 로그인 화면 (파라미터 없음)
   MainTabs: undefined;                 // 메인 탭 네비게이터 (파라미터 없음)
   CameraTest: {                        // 카메라 테스트 화면
+    questionText: string;              // 질문 텍스트
+    questionId?: number;               // 질문 ID (선택사항)
+    conversationId?: number;           // 대화 ID (선택사항)
+    cameraSessionId?: string;          // 카메라 세션 ID (선택사항)
+    microphoneSessionId?: string;      // 마이크 세션 ID (선택사항)
+  };
+  MicrophoneTest: {                    // 마이크 테스트 화면
     questionText: string;              // 질문 텍스트
     questionId?: number;               // 질문 ID (선택사항)
     conversationId?: number;           // 대화 ID (선택사항)
@@ -308,6 +316,7 @@ export default function App() {
             
             {/* 카메라 테스트 화면 */}
             <Stack.Screen name="CameraTest" component={CameraTest} />
+            <Stack.Screen name="MicrophoneTest" component={MicrophoneTest} />
             
             {/* 통합 대화 화면 */}
             <Stack.Screen name="Conversation" component={Conversation} />
@@ -328,6 +337,6 @@ export default function App() {
       </ConversationProvider>
     </DiaryProvider>
     </GlobalAccessibilityWrapper>
-    </AccessibilityProvider>
+ </AccessibilityProvider>
   );
 }

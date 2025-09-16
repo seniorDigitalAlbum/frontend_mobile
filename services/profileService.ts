@@ -4,7 +4,8 @@ import profileApiService from './api/profileApiService';
 class ProfileService {
   async getProfile(): Promise<Profile> {
     try {
-      return await profileApiService.getProfile();
+      return this.getDefaultProfile();
+      // return await profileApiService.getProfile();
     } catch (error) {
       console.error('Failed to fetch profile:', error);
       // 에러 발생 시 기본 프로필 반환

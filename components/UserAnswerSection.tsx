@@ -42,11 +42,11 @@ export default function UserAnswerSection({
       {isQuestionComplete && (
         <View className="items-center mb-8">
           <AnswerMic 
-            questionId={questionId || `question-${Date.now()}`}
-            microphoneSessionId={microphoneSessionId}
-            cameraSessionId={cameraSessionId}
-            conversationId={conversationId}
-            userId={userId}
+            questionId={String(questionId || `question-${Date.now()}`)}
+            microphoneSessionId={microphoneSessionId || undefined}
+            cameraSessionId={cameraSessionId || undefined}
+            conversationId={conversationId || undefined}
+            userId={userId || undefined}
             onRecordingComplete={onRecordingComplete}
             onRecordingStart={onRecordingStart}
             onAIResponse={onAIResponse}

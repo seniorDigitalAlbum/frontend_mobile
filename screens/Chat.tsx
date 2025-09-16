@@ -2,35 +2,56 @@ import { View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-na
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DiaryLoading from '../components/DiaryLoading';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { API_BASE_URL } from '../config/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
+
+interface ChatMessage {
+    id: number;
+    conversationId: number;
+    senderType: 'USER' | 'AI';
+    content: string;
+    timestamp: string;
+}
 
 export default function Chat({ route, navigation }: Props) {
     const { settings } = useAccessibility();
     const [isGenerating, setIsGenerating] = useState(false);
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     
-    // 전달받은 대화 데이터 또는 기본 데이터 사용
-    const chatHistory = route.params?.chatHistory || [
-        {
-            id: 1,
-            type: 'ai',
-            message: '오늘 하루는 어땠나요?',
-            timestamp: '14:30'
-        },
-        {
-            id: 2,
-            type: 'user',
-            message: '정말 좋았어요! 친구들과 재미있게 놀았어요.',
-            timestamp: '14:32'
-        }
-    ];
-
     // 대화 세션 정보 추출
     const conversationId = route.params?.conversationId;
     const userId = "1"; // 하드코딩된 사용자 ID
+
+    // API에서 대화 메시지 가져오기
+    useEffect(() => {
+        const fetchChatMessages = async () => {
+            if (!conversationId) {
+                setIsLoading(false);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages`);
+                if (response.ok) {
+                    const messages = await response.json();
+                    setChatHistory(messages);
+                } else {
+                    console.error('Failed to fetch chat messages:', response.status);
+                }
+            } catch (error) {
+                console.error('Error fetching chat messages:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchChatMessages();
+    }, [conversationId]);
 
     const handleGenerateDiary = async () => {
         setIsGenerating(true);
@@ -68,7 +89,7 @@ export default function Chat({ route, navigation }: Props) {
     };
 
     // 로딩 중일 때는 로딩 화면 표시
-    if (isGenerating) {
+    if (isGenerating || isLoading) {
         return <DiaryLoading />;
     }
 
@@ -76,27 +97,31 @@ export default function Chat({ route, navigation }: Props) {
         <SafeAreaView className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : 'bg-gray-50'}`}>
             {/* 채팅 내용 */}
             <ScrollView className={`flex-1 ${settings.isLargeTextMode ? 'px-6 py-6' : 'px-4 py-4'}`}>
-                {chatHistory.map((chat) => (
-                    <View key={chat.id} className={`${settings.isLargeTextMode ? 'mb-6' : 'mb-4'} ${chat.type === 'ai' ? 'items-start' : 'items-end'}`}>
+                {chatHistory.map((message) => (
+                    <View key={message.id} className={`${settings.isLargeTextMode ? 'mb-6' : 'mb-4'} ${message.senderType === 'AI' ? 'items-start' : 'items-end'}`}>
                         {/* AI 메시지 */}
-                        {chat.type === 'ai' && (
+                        {message.senderType === 'AI' && (
                             <View className="flex-row items-end space-x-2">
                                 <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} bg-blue-100 rounded-full justify-center items-center`}>
                                     <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color="#3B82F6" />
                                 </View>
                                 <View className={`max-w-[80%] rounded-2xl rounded-bl-md shadow-sm ${settings.isLargeTextMode ? 'p-4' : 'p-3'} ${settings.isHighContrastMode ? 'bg-black border border-white' : 'bg-white'}`}>
-                                    <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>{chat.message}</Text>
-                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>{chat.timestamp}</Text>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>{message.content}</Text>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                                        {new Date(message.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
                                 </View>
                             </View>
                         )}
                         
                         {/* 사용자 메시지 */}
-                        {chat.type === 'user' && (
+                        {message.senderType === 'USER' && (
                             <View className="flex-row items-end space-x-2 justify-end">
                                 <View className={`max-w-[80%] rounded-2xl rounded-br-md ${settings.isLargeTextMode ? 'p-4' : 'p-3'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-purple-500'}`}>
-                                    <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>{chat.message}</Text>
-                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-600' : 'text-purple-100'}`}>{chat.timestamp}</Text>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>{message.content}</Text>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-600' : 'text-purple-100'}`}>
+                                        {new Date(message.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
                                 </View>
                                 <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} bg-purple-100 rounded-full justify-center items-center`}>
                                     <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color="#8B5CF6" />

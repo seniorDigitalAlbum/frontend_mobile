@@ -19,6 +19,7 @@ export default function CameraTest({ route, navigation }: Props) {
         microphoneSessionId 
     } = route.params || { questionText: '질문이 없습니다.' };
     const [isMicTested, setIsMicTested] = useState(false);
+    const [isCameraReady, setIsCameraReady] = useState(false);
 
     const handleStart = async () => {
         try {
@@ -60,39 +61,28 @@ export default function CameraTest({ route, navigation }: Props) {
         }
     };
 
+    const handleCameraReady = () => {
+        setIsCameraReady(true);
+    };
+
     const canStart = isMicTested;
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-black">
             {/* 헤더 - 질문 내용 */}
-            <View className="p-6 border-b border-gray-200">
+            <View className="p-6 border-b border-gray-200 bg-white">
                 <Text className="text-xl font-bold text-center text-black leading-6">
                     카메라와 마이크를 테스트할게요.
                 </Text>
             </View>
 
-            {/* 메인 컨텐츠 */}
-            <View className="flex-1 p-6">
-                {/* 카메라 화면 */}
-                <View className="mb-8">
-                    <TempCamera />
-                </View>
-
-                {/* 마이크 테스트 */}
-                <View className="items-center mb-8">
-                    <TempMicTest 
-                        isTested={isMicTested}
-                        onTest={handleMicTest}
-                    />
-                </View>
-
-                {/* 시작하기 버튼 */}
-                <View className="items-center">
-                    <StartButton 
-                        onPress={handleStart}
-                        disabled={!canStart}
-                    />
-                </View>
+            {/* 메인 컨텐츠 - 헤더 밑에 꽉 차도록 */}
+            <View className="flex-1">
+                <TempCamera 
+                    onCameraReady={handleCameraReady}
+                    navigation={navigation}
+                    route={route}
+                />
             </View>
         </SafeAreaView>
     );

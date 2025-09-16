@@ -1,30 +1,51 @@
 import { API_BASE_URL } from '../../config/api';
 
-// 앨범 관련 타입 정의
-export interface Album {
+// 대화 관련 타입 정의
+export interface Conversation {
   id: number;
   userId: string;
-  conversationId: number;
-  finalEmotion: string;
-  diaryContent: string;
+  questionId: number;
+  cameraSessionId: string;
+  microphoneSessionId: string;
+  status: string;
   createdAt: string;
-  updatedAt: string;
+  endedAt: string;
+  summary: string;
+  diary: string;
+  processingStatus: string;
+  dominantEmotion: string;
+  emotionConfidence: number;
+  emotionDistribution: string;
 }
 
-export interface CreateAlbumRequest {
-  userId: string;
+export interface DiaryDetail {
   conversationId: number;
-  finalEmotion: string;
-  diaryContent: string;
+  summary: string;
+  diary: string;
+  emotionSummary: {
+    dominantEmotion: string;
+    emotionCounts: Record<string, number>;
+    averageConfidence: number;
+    analyzedMessageCount: number;
+  };
+  musicRecommendations: MusicRecommendation[];
+  message: string;
+  success: boolean;
 }
 
-export interface UpdateAlbumRequest {
-  finalEmotion: string;
-  diaryContent: string;
+export interface MusicRecommendation {
+  id: number;
+  conversationId: number;
+  title: string;
+  artist: string;
+  mood: string;
+  youtubeLink: string;
+  youtubeVideoId: string;
+  createdAt: string;
 }
 
-class AlbumApiService {
-  private baseUrl = `${API_BASE_URL}/api/albums`;
+class ConversationApiService {
+  private baseUrl = `${API_BASE_URL}/api/conversations`;
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
@@ -42,119 +63,70 @@ class AlbumApiService {
 
       return await response.json();
     } catch (error) {
-      console.error('Album API request failed:', error);
+      console.error('Conversation API request failed:', error);
       throw error;
     }
   }
 
-  // 앨범 생성
-  async createAlbum(request: CreateAlbumRequest): Promise<Album> {
+  // 사용자 대화 목록 조회 (앨범 목록)
+  async getConversationsByUser(userId: string = "1"): Promise<Conversation[]> {
     try {
-      const params = new URLSearchParams({
-        userId: request.userId,
-        conversationId: request.conversationId.toString(),
-        finalEmotion: request.finalEmotion,
-        diaryContent: request.diaryContent,
-      });
-
-      const response = await this.request<Album>(`?${params.toString()}`, {
-        method: 'POST',
-      });
-
+      const response = await this.request<Conversation[]>(`/user/${userId}`);
       return response;
     } catch (error) {
-      console.error('Failed to create album:', error);
-      throw error;
-    }
-  }
-
-  // 앨범 상세 조회
-  async getAlbum(albumId: number): Promise<Album | null> {
-    try {
-      const response = await this.request<Album>(`/${albumId}`);
-      return response;
-    } catch (error) {
-      console.error(`Failed to get album ${albumId}:`, error);
-      return null;
-    }
-  }
-
-  // 사용자 앨범 목록
-  async getAlbumsByUser(userId: string): Promise<Album[]> {
-    try {
-      const response = await this.request<Album[]>(`/user/${userId}`);
-      return response;
-    } catch (error) {
-      console.error(`Failed to get albums for user ${userId}:`, error);
+      console.error(`Failed to get conversations for user ${userId}:`, error);
       return [];
     }
   }
 
-  // 사용자 앨범 개수
-  async getAlbumCount(userId: string): Promise<number> {
+  // 특정 대화의 일기 상세 조회
+  async getDiaryByConversation(conversationId: number): Promise<DiaryDetail | null> {
     try {
-      const response = await this.request<number>(`/user/${userId}/count`);
+      const response = await this.request<DiaryDetail>(`/${conversationId}/diary`);
       return response;
     } catch (error) {
-      console.error(`Failed to get album count for user ${userId}:`, error);
+      console.error(`Failed to get diary for conversation ${conversationId}:`, error);
+      return null;
+    }
+  }
+
+  // 사용자 대화 개수 조회
+  async getConversationCount(userId: string = "1"): Promise<number> {
+    try {
+      const conversations = await this.getConversationsByUser(userId);
+      return conversations.length;
+    } catch (error) {
+      console.error(`Failed to get conversation count for user ${userId}:`, error);
       return 0;
     }
   }
 
-  // 대화 세션별 앨범 조회
-  async getAlbumByConversation(conversationId: number): Promise<Album | null> {
+  // 특정 대화 조회
+  async getConversation(conversationId: number): Promise<Conversation | null> {
     try {
-      const response = await this.request<Album>(`/conversation/${conversationId}`);
+      const response = await this.request<Conversation>(`/${conversationId}`);
       return response;
     } catch (error) {
-      console.error(`Failed to get album for conversation ${conversationId}:`, error);
+      console.error(`Failed to get conversation ${conversationId}:`, error);
       return null;
     }
   }
 
-  // 앨범 업데이트
-  async updateAlbum(albumId: number, request: UpdateAlbumRequest): Promise<Album | null> {
+  // 감정별 대화 조회
+  async getConversationsByEmotion(userId: string = "1", emotion: string): Promise<Conversation[]> {
     try {
-      const params = new URLSearchParams({
-        finalEmotion: request.finalEmotion,
-        diaryContent: request.diaryContent,
-      });
-
-      const response = await this.request<Album>(`/${albumId}?${params.toString()}`, {
-        method: 'PUT',
-      });
-      return response;
+      const conversations = await this.getConversationsByUser(userId);
+      return conversations.filter(conv => conv.dominantEmotion === emotion);
     } catch (error) {
-      console.error(`Failed to update album ${albumId}:`, error);
-      return null;
-    }
-  }
-
-  // 앨범 삭제
-  async deleteAlbum(albumId: number): Promise<boolean> {
-    try {
-      const response = await this.request<string>(`/${albumId}`, {
-        method: 'DELETE',
-      });
-      return response.includes('성공적으로 삭제');
-    } catch (error) {
-      console.error(`Failed to delete album ${albumId}:`, error);
-      return false;
-    }
-  }
-
-  // 감정별 앨범 조회
-  async getAlbumsByEmotion(userId: string, emotion: string): Promise<Album[]> {
-    try {
-      const response = await this.request<Album[]>(`/user/${userId}/emotion/${emotion}`);
-      return response;
-    } catch (error) {
-      console.error(`Failed to get albums by emotion for user ${userId}:`, error);
+      console.error(`Failed to get conversations by emotion for user ${userId}:`, error);
       return [];
     }
   }
 
 }
 
-export const albumApiService = new AlbumApiService();
-export default albumApiService;
+export const conversationApiService = new ConversationApiService();
+export default conversationApiService;
+
+
+

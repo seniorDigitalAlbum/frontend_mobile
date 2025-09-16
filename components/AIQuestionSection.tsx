@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import ttsService from '../services/audio/ttsService';
+import AICharacter from './AICharacter';
 
 interface AIQuestionSectionProps {
   questionText: string;
@@ -45,7 +46,7 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
     };
   }, [questionText, hasPlayed]);
 
-  // 수동 재생 함수
+  // tts 수동 재생
   const handlePlayQuestion = async () => {
     if (isPlaying) {
       await ttsService.stopAudio();
@@ -82,11 +83,11 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
         className="w-32 h-32 bg-blue-100 rounded-full justify-center items-center mb-6"
         activeOpacity={0.7}
       >
-        <Text className="text-4xl">🤖</Text>
+        <AICharacter />
         {/* 재생/정지 표시 */}
         <View className="absolute bottom-2 right-2">
           <Text className="text-lg">
-            {isPlaying ? '⏹️' : '▶️'}
+            {/* {isPlaying ? '다시 재생' : '재생 중입니다..'} */}
           </Text>
         </View>
       </TouchableOpacity>

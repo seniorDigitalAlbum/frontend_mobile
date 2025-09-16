@@ -22,6 +22,8 @@ interface AccessibilityContextType {
   toggleLargeTextMode: () => void;
   toggleHighContrastMode: () => void;
   resetSettings: () => void;
+  getTextStyle: (baseFontSize?: number) => any;
+  getContainerStyle: () => any;
 }
 
 const defaultSettings: AccessibilitySettings = {
@@ -89,11 +91,28 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
     saveSettings(defaultSettings);
   };
 
+  // 모바일에서 사용할 스타일 함수들
+  const getTextStyle = (baseFontSize: number = 16) => {
+    return {
+      fontSize: settings.isLargeTextMode ? baseFontSize * 1.4 : baseFontSize,
+      lineHeight: settings.isLargeTextMode ? baseFontSize * 1.4 * 1.6 : baseFontSize * 1.5,
+      color: settings.isHighContrastMode ? '#ffffff' : undefined,
+    };
+  };
+
+  const getContainerStyle = () => {
+    return {
+      backgroundColor: settings.isHighContrastMode ? '#000000' : undefined,
+    };
+  };
+
   const value: AccessibilityContextType = {
     settings,
     toggleLargeTextMode,
     toggleHighContrastMode,
     resetSettings,
+    getTextStyle,
+    getContainerStyle,
   };
 
   return (

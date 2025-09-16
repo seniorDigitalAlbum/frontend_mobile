@@ -1,3 +1,5 @@
+import { getKoBERTApiUrl } from '../../config/api';
+
 export interface KoBERTEmotionRequest {
   prev_user: string;
   prev_sys: string;
@@ -18,7 +20,7 @@ export interface KoBERTEmotionResponse {
 }
 
 class KoBERTApiService {
-  private baseUrl = 'http://172.30.1.17:8001';
+  private baseUrl = getKoBERTApiUrl();
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {

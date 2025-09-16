@@ -181,7 +181,7 @@ export default function Conversation({ route, navigation }: Props) {
                 const averageConfidence = emotionCaptures.reduce((sum, capture) => sum + capture.confidence, 0) / emotionCaptures.length;
                 const finalEmotion = Object.keys(emotionCounts).reduce((a, b) => emotionCounts[a] > emotionCounts[b] ? a : b);
 
-                console.log('📊 감정 분석 결과 전송 - conversationMessageId:', conversationMessageId);
+                console.log('감정 분석 결과 전송 - conversationMessageId:', conversationMessageId);
                 
                 try {
                     await sendFacialEmotionAnalysis({
@@ -192,7 +192,7 @@ export default function Conversation({ route, navigation }: Props) {
                         averageConfidence,
                         captureDetails: emotionCaptures
                     });
-                    console.log('✅ 표정 감정 분석 저장 완료');
+                    console.log('표정 감정 분석 저장 완료');
                     
                     // 표정 감정 분석 저장 완료 후 KoBERT 플로우 실행
                     await executeKoBERTFlow(conversationMessageId, userText);
@@ -274,7 +274,7 @@ export default function Conversation({ route, navigation }: Props) {
                 prev_sys: contextResponse.prevSys || "",
                 curr_user: contextResponse.currUser || ""
             });
-            console.log('🤖 KoBERT 감정 분석 완료:', kobertResponse);
+            console.log('KoBERT 감정 분석 완료:', kobertResponse);
 
             // all_probabilities에서 가장 높은 값 찾기
             const allProbabilities = kobertResponse.all_probabilities;
@@ -299,19 +299,19 @@ export default function Conversation({ route, navigation }: Props) {
                 confidence: maxConfidence,
                 speechEmotionData: JSON.stringify(speechEmotionData)
             });
-            console.log('💬 음성 감정 분석 저장 완료:', speechEmotionResponse);
+            console.log('음성 감정 분석 저장 완료:', speechEmotionResponse);
 
             // 4. 통합 감정 분석 실행
             try {
-                console.log('🔄 통합 감정 분석 시작 - conversationMessageId:', conversationMessageId);
-                console.log('📊 표정 감정 캡처 수:', emotionCaptures.length);
+                console.log('통합 감정 분석 시작 - conversationMessageId:', conversationMessageId);
+                console.log('표정 감정 캡처 수:', emotionCaptures.length);
                 const combinedEmotionResponse = await combinedEmotionApiService.combineEmotions({
                     conversationMessageId: conversationMessageId
                 });
-                console.log('🎯 통합 감정 분석 완료:', combinedEmotionResponse);
+                console.log('통합 감정 분석 완료:', combinedEmotionResponse);
             } catch (error) {
-                console.error('❌ 통합 감정 분석 실패:', error);
-                console.log('💡 표정 감정과 말 감정이 모두 저장되었는지 확인해주세요.');
+                console.error('통합 감정 분석 실패:', error);
+                console.log('표정 감정과 말 감정이 모두 저장되었는지 확인해주세요.');
             }
 
         } catch (error) {
@@ -342,16 +342,16 @@ export default function Conversation({ route, navigation }: Props) {
                         };
                         
                         setEmotionCaptures(prev => [...prev, newCapture]);
-                        console.log('📸 감정 캡처 추가됨:', newCapture);
+                        console.log('감정 캡처 추가됨:', newCapture);
                     }
                 }}
                 onRecordingStart={() => {
-                    console.log('🎤 HiddenCamera: 녹음 시작됨');
+                    console.log('HiddenCamera: 녹음 시작됨');
                     // 감정 캡처 초기화는 새로운 대화 시작 시에만 수행
                     // setEmotionCaptures([]); // 주석 처리
                 }}
                 onRecordingStop={() => {
-                    console.log('🎤 HiddenCamera: 녹음 종료됨');
+                    console.log('HiddenCamera: 녹음 종료됨');
                 }}
             />
 
@@ -368,7 +368,7 @@ export default function Conversation({ route, navigation }: Props) {
                     <View className="items-center mb-8">
                         <View className="bg-blue-100 px-6 py-4 rounded-full">
                             <Text className="text-blue-600 font-medium text-center">
-                                🤖 AI가 응답을 생성하고 있습니다...
+                                AI가 응답을 생성하고 있습니다...
                             </Text>
                         </View>
                     </View>

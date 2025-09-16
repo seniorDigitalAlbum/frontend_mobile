@@ -54,7 +54,7 @@ export default function Home() {
                 const result = await questionApiService.getQuestionsPaginated(0, itemsPerPage);
                 console.log('Pagination API result:', result);
                 console.log('Questions count:', result.questions?.length);
-                
+
                 // API가 모든 질문을 반환하는 경우 클라이언트 사이드에서 나누기
                 if (result.questions && result.questions.length > itemsPerPage) {
                     console.log('API returned all questions, using client-side pagination');
@@ -76,14 +76,14 @@ export default function Home() {
             // fallback: 모든 질문을 가져와서 클라이언트 사이드에서 페이지네이션
             const fetchedQuestions = await questionService.getQuestions();
             setAllQuestions(fetchedQuestions);
-            
+
             // 첫 번째 페이지만 표시 (5개)
             const initialQuestions = fetchedQuestions.slice(0, itemsPerPage);
             console.log(`Initial load: ${initialQuestions.length} questions (itemsPerPage: ${itemsPerPage})`);
             setQuestions(initialQuestions);
             setHasMore(fetchedQuestions.length > itemsPerPage);
             setCurrentPage(0);
-            
+
         } catch (error) {
             console.error('Failed to load questions:', error);
             setQuestions([]);
@@ -100,7 +100,7 @@ export default function Home() {
         try {
             setLoadingMore(true);
             const nextPage = currentPage + 1;
-            
+
             // 페이지네이션 API가 사용 가능한 경우
             if (allQuestions.length === questions.length) {
                 try {
@@ -118,7 +118,7 @@ export default function Home() {
             const startIndex = (nextPage) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
             const nextQuestions = allQuestions.slice(startIndex, endIndex);
-            
+
             if (nextQuestions.length > 0) {
                 console.log(`Loading more: ${nextQuestions.length} questions (page: ${nextPage})`);
                 setQuestions(prev => [...prev, ...nextQuestions]);
@@ -127,7 +127,7 @@ export default function Home() {
             } else {
                 setHasMore(false);
             }
-            
+
         } catch (error) {
             console.error('Failed to load more questions:', error);
         } finally {
@@ -174,43 +174,44 @@ export default function Home() {
     const handleScroll = (event: any) => {
         const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
         const paddingToBottom = 20;
-        
+
         if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
             loadMoreQuestions();
         }
     };
 
     console.log(`Rendering ${questions.length} questions`);
-    
+
     return (
-        <ScrollView 
-            className="flex-1 bg-white"
+        <ScrollView
+            className="flex flex-1 bg-white p-8"
             onScroll={handleScroll}
             scrollEventThrottle={400}
         >
             {/* 앨범 표지 */}
-            <View className="flex-1 justify-start items-start mt-12 ml-4">
-                <Text className="text-2xl font-bold">내 앨범</Text>
-            </View>
-            <View className="m-4">
+            <View className="my-3">
+                <Text className="text-2xl font-bold mb-3">내 앨범</Text>
                 <AlbumHero
                     imageUrl="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop"
                     onPress={() => navigation.navigate('Album')}
                 />
             </View>
+
             {/* 추천 질문 영역 */}
-            <RecommendedQuestion 
-                randomQuestion={randomQuestion}
-                onQuestionPress={handleQuestionPress}
-            />
+            <View className="my-10">
+                <Text className="text-2xl font-bold mb-5">이 얘기를 들어보고 싶어요.</Text>
+                <RecommendedQuestion
+                    randomQuestion={randomQuestion}
+                    onQuestionPress={handleQuestionPress}
+                />
+            </View>
+
             {/* 모든 리스트 */}
-            <View>
-                <View className="flex-1 justify-start items-start mt-4 ml-4">
-                    <Text className="text-2xl font-bold">다른 질문</Text>
-                    <Text className="text-base">대화를 시작해볼까요?</Text>
-                </View>
+            <View className="my-3">
+                <Text className="text-2xl font-bold">다른 질문</Text>
+                <Text className="text-base mb-3">대화를 시작해볼까요?</Text>
                 {/* 질문 리스트 */}
-                <View className="m-4">
+                <View>
                     {questions && questions.length > 0 ? (
                         questions.map((question) => {
                             // question이 유효한지 확인

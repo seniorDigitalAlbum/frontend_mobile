@@ -1,14 +1,14 @@
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
-import { albumApiService } from '../services/api/albumApiService';
-import conversationApiService from '../services/api/conversationApiService';
+import { conversationApiService } from '../services/api/albumApiService';
 import { Audio } from 'expo-av';
 import { useState, useEffect } from 'react';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { commonStyles } from '../styles/commonStyles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
 
@@ -35,7 +35,7 @@ export default function DiaryResult({ route }: Props) {
             if (conversationId) {
                 try {
                     setLoading(true);
-                    const diaryResponse = await conversationApiService.getDiary(conversationId);
+                    const diaryResponse = await conversationApiService.getDiaryByConversation(conversationId);
                     if (diaryResponse) {
                         setDiaryData(diaryResponse);
                         console.log('일기 데이터 로드됨:', diaryResponse);
@@ -144,32 +144,10 @@ export default function DiaryResult({ route }: Props) {
             isPending: true, // 백엔드 저장 중 상태
         };
 
-        // 프론트엔드에 즉시 추가 (Optimistic Update)
+        // 일기는 자동으로 생성되므로 로컬에만 추가
         addDiary(tempDiary);
 
-        try {
-            // 앨범 생성 API 호출
-            console.log('앨범 생성 중...');
-            const album = await albumApiService.createAlbum({
-                userId,
-                conversationId: conversationId || 1, // 임시 대화 ID
-                finalEmotion: emotion,
-                diaryContent: diaryContent
-            });
-
-            console.log('앨범 생성 완료:', album);
-
-            // 저장 성공 시 임시 데이터를 실제 데이터로 교체
-            const savedDiary = {
-                ...tempDiary,
-                id: album.id, // 실제 앨범 ID로 교체
-                isPending: false, // 저장 완료 상태
-            };
-            updateDiary(tempDiary.id, savedDiary);
-
-            console.log('일기 저장 완료!');
-            
-            // 앨범 페이지로 이동하면서 저장된 일기 정보 전달
+        // 앨범 페이지로 이동
             navigation.reset({
                 index: 0,
                 routes: [
@@ -181,15 +159,6 @@ export default function DiaryResult({ route }: Props) {
                     }
                 ],
             });
-        } catch (error) {
-            console.error('앨범 생성 실패:', error);
-            
-            // 실패 시 임시 데이터 제거
-            removeDiary(tempDiary.id);
-            
-            // 에러 처리
-            alert('일기 저장에 실패했습니다. 다시 시도해주세요.');
-        }
     };
 
     const handleBackToHome = () => {
@@ -214,12 +183,19 @@ export default function DiaryResult({ route }: Props) {
     };
 
     return (
-        <SafeAreaView className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : 'bg-white'}`}>
+        <SafeAreaView 
+            className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : ''}`}
+            style={!settings.isHighContrastMode ? { backgroundColor: '#FFF8E1' } : {}}
+        >
             <ScrollView className="flex-1">
-                {/* 상단 감정 이모티콘 */}
-                <View className={`items-center ${settings.isLargeTextMode ? 'pt-16 pb-8' : 'pt-12 pb-6'}`}>
-                    <View className={`${settings.isLargeTextMode ? 'w-28 h-28' : 'w-24 h-24'} bg-yellow-100 rounded-full justify-center items-center mb-4`}>
-                        <Text className={`${settings.isLargeTextMode ? 'text-5xl' : 'text-4xl'}`}>{getEmotionEmoji(displayData.emotionSummary.dominantEmotion)}</Text>
+                {/* 상단 감정 이미지 */}
+                <View className={`items-center ${settings.isLargeTextMode ? 'pt-20 pb-12' : 'pt-16 pb-10'}`}>
+                    <View className={`${settings.isLargeTextMode ? 'w-32 h-32' : 'w-28 h-28'} bg-white rounded-full justify-center items-center mb-6 shadow-lg`}>
+                        <Image 
+                            source={require('../assets/happy.png')} 
+                            className={`${settings.isLargeTextMode ? 'w-20 h-20' : 'w-16 h-16'}`}
+                            resizeMode="contain"
+                        />
                     </View>
                     {/* 음악 재생 상태 표시 */}
                     {isPlaying && displayData.musicRecommendations.length > 0 && (
@@ -234,56 +210,63 @@ export default function DiaryResult({ route }: Props) {
                 {/* 제목 */}
                 <View className={`items-center ${settings.isLargeTextMode ? 'mb-8' : 'mb-6'}`}>
                     <Text className={`font-bold ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                        오늘의 일기
+                        이 대화를 할 때 행복해 보였어요.
                     </Text>
-                </View>
-
-                {/* 구분선 */}
-                <View className={`${settings.isLargeTextMode ? 'mx-8 mb-10' : 'mx-6 mb-8'}`}>
-                    <View className={`h-px ${settings.isHighContrastMode ? 'bg-white' : 'bg-gray-200'}`} />
                 </View>
 
                 {/* 일기 내용 */}
                 <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
-                    <View className={`border rounded-2xl shadow-sm ${settings.isLargeTextMode ? 'p-8' : 'p-6'} ${settings.isHighContrastMode ? 'bg-black border-white' : 'bg-white border-gray-200'}`}>
+                    <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
                         <Text className={`leading-7 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-700'}`}>
-                            {displayData.diary}
+                            병원 복도에서 오랫동안 기다리던 끝에, 아기가 태어났다는 소식을 들었을 때 가슴이 콩닥콩닥 뛰었다. 간호사가 작은 아기를 내 품에 안겨주었을 때, 그 따뜻하고 작은 몸이 얼마나 소중하게 느껴졌는지 모른다.
+
+손바닥만 한 얼굴에 작은 손가락이 꼼지락거리는 걸 보니, 그냥 웃음이 터져 나왔다. "이 아이가 우리 집에 온 거구나" 하는 생각에 눈물이 핑 돌 정도로 기뻤다.
                         </Text>
                     </View>
                 </View>
 
                 {/* 버튼들 */}
                 <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'} space-y-4`}>
-                    <TouchableOpacity
-                        onPress={handleSaveDiary}
-                        className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-green-500'}`}
-                        activeOpacity={0.8}
-                        style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}
-                    >
-                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
-                            💾 일기 저장하기
-                        </Text>
-                    </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={() => console.log('일기 공유하기')}
-                        className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-blue-500'}`}
+                        className={`w-full items-center ${settings.isLargeTextMode ? 'py-6' : 'py-4'}`}
                         activeOpacity={0.8}
-                        style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}
+                        style={[
+                            commonStyles.cardStyle, 
+                            { 
+                                backgroundColor: '#F5F5F5',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 4,
+                                elevation: 3
+                            }
+                        ]}
                     >
-                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
+                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} text-gray-800`}>
                             📤 일기 공유하기
                         </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={handleBackToHome}
-                        className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-purple-500'}`}
+                        className={`w-full items-center ${settings.isLargeTextMode ? 'py-6' : 'py-4'}`}
                         activeOpacity={0.8}
-                        style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}
+                        style={[
+                            commonStyles.cardStyle, 
+                            { 
+                                backgroundColor: '#E5E5E5',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 4,
+                                elevation: 3
+                            }
+                        ]}
                     >
-                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
-                            🏠 홈으로 돌아가기
+                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} text-gray-800`}>
+                            처음 화면으로 돌아가기
                         </Text>
                     </TouchableOpacity>
                 </View>
