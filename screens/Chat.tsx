@@ -70,7 +70,7 @@ export default function Chat({ route, navigation }: Props) {
                 navigation.navigate('DiaryResult', {
                     diary: diaryResponse.diary,
                     conversationId: diaryResponse.conversationId,
-                    finalEmotion: diaryResponse.emotionSummary.dominantEmotion,
+                    finalEmotion: '기쁨', // 기본값으로 설정 (백엔드에서 emotionSummary 제거됨)
                     userId: "1",
                     musicRecommendations: diaryResponse.musicRecommendations
                 });

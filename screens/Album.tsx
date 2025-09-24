@@ -71,18 +71,24 @@ export default function Album() {
                 'hurt': '상처'
             };
 
-            // 대화 데이터를 일기 형태로 변환
-            const diaryData = completedAlbums.map(conversation => ({
-                id: conversation.id,
-                title: `${emotionMap[conversation.dominantEmotion] || conversation.dominantEmotion}의 하루`,
-                date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
-                    month: 'short',
-                    day: 'numeric'
-                }),
-                preview: conversation.diary ? conversation.diary.substring(0, 100) + '...' : '일기가 생성 중입니다...',
-                imageUrl: 'https://picsum.photos/200/200?random=' + conversation.id,
-                content: conversation.diary || '일기가 아직 생성되지 않았습니다.',
-                isPending: conversation.processingStatus !== 'COMPLETED'
+            // 대화 데이터를 일기 형태로 변환 (앨범 표지 정보 포함)
+            const diaryData = await Promise.all(completedAlbums.map(async (conversation) => {
+                // 앨범 표지 사진 조회
+                const albumPhotos = await conversationApiService.getAlbumPhotos(conversation.id);
+                const coverPhoto = albumPhotos.find(photo => photo.isCover);
+                
+                return {
+                    id: conversation.id,
+                    title: `${emotionMap[conversation.dominantEmotion] || conversation.dominantEmotion}의 하루`,
+                    date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
+                        month: 'short',
+                        day: 'numeric'
+                    }),
+                    preview: conversation.diary ? conversation.diary.substring(0, 100) + '...' : '일기가 생성 중입니다...',
+                    imageUrl: coverPhoto ? coverPhoto.imageUrl : 'https://picsum.photos/200/200?random=' + conversation.id,
+                    content: conversation.diary || '일기가 아직 생성되지 않았습니다.',
+                    isPending: conversation.processingStatus !== 'COMPLETED'
+                };
             }));
             
             setDiaries(diaryData);
@@ -98,8 +104,8 @@ export default function Album() {
     };
 
     const handleDiaryPress = async (diary: any) => {
-        // 일기 상세 화면으로 이동
-        console.log('일기 선택:', diary.title);
+        // 앨범 상세 화면으로 이동
+        console.log('앨범 선택:', diary.title);
         
         try {
             // 백엔드에서 일기 상세 정보 조회
@@ -107,20 +113,21 @@ export default function Album() {
             const diaryDetail = await conversationApiService.getDiaryByConversation(diary.id);
             
             if (diaryDetail) {
-                navigation.navigate('DiaryResult', {
-                    diary: diaryDetail.diary,
+                // 앨범 상세 페이지로 이동
+                navigation.navigate('AlbumDetail', {
                     conversationId: diaryDetail.conversationId,
-                    finalEmotion: diaryDetail.emotionSummary.dominantEmotion,
-                    userId: userId,
-                    musicRecommendations: diaryDetail.musicRecommendations
+                    diary: diaryDetail.diary,
+                    finalEmotion: '기쁨' // 기본값으로 설정 (백엔드에서 emotionSummary 제거됨)
                 });
             } else {
                 console.error('일기 상세 정보를 찾을 수 없습니다.');
                 // Context에서 일기 데이터 확인 (fallback)
                 const diaryFromContext = getDiaryById(diary.id);
                 if (diaryFromContext && diaryFromContext.content) {
-                    navigation.navigate('DiaryResult', { 
-                        diary: diaryFromContext.content 
+                    navigation.navigate('AlbumDetail', { 
+                        conversationId: diary.id,
+                        diary: diaryFromContext.content,
+                        finalEmotion: '기쁨'
                     });
                 }
             }
@@ -129,8 +136,10 @@ export default function Album() {
             // Context에서 일기 데이터 확인 (fallback)
             const diaryFromContext = getDiaryById(diary.id);
             if (diaryFromContext && diaryFromContext.content) {
-                navigation.navigate('DiaryResult', { 
-                    diary: diaryFromContext.content 
+                navigation.navigate('AlbumDetail', { 
+                    conversationId: diary.id,
+                    diary: diaryFromContext.content,
+                    finalEmotion: '기쁨'
                 });
             }
         }

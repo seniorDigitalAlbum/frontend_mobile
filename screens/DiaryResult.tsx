@@ -1,4 +1,4 @@
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, Linking } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, Linking, TextInput, FlatList, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
@@ -10,8 +10,24 @@ import { useState, useEffect } from 'react';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { commonStyles } from '../styles/commonStyles';
 import { WebView } from 'react-native-webview';
+import * as ImagePicker from 'expo-image-picker';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
+
+interface Comment {
+    id: number;
+    author: string;
+    content: string;
+    createdAt: string;
+}
+
+interface AlbumPhoto {
+    id: number;
+    imageUrl: string;
+    isCover: boolean;
+    uploadedBy: string;
+    createdAt: string;
+}
 
 export default function DiaryResult({ route }: Props) {
     const { settings } = useAccessibility();
@@ -116,15 +132,35 @@ export default function DiaryResult({ route }: Props) {
             '두려움': require('../assets/fear.png'),
             '놀람': require('../assets/surprised.png'),
             '행복': require('../assets/happy.png'),
-            '화남': require('../assets/angry.png')
+            '화남': require('../assets/angry.png'),
+            '불안': require('../assets/fear.png'),
+            '당황': require('../assets/surprised.png'),
+            '상처': require('../assets/sad.jpg')
         };
         return emotionMap[emotion] || require('../assets/happy.png');
+    };
+
+    // 감정에 따른 배경색 매핑
+    const getEmotionBackgroundColor = (emotion: string) => {
+        const colorMap: Record<string, string> = {
+            '기쁨': '#FFF8E1', // 밝은 노란색
+            '슬픔': '#E3F2FD', // 밝은 파란색
+            '분노': '#FFEBEE', // 밝은 빨간색
+            '불안': '#F3E5F5', // 밝은 보라색
+            '당황': '#E8F5E8', // 밝은 초록색
+            '상처': '#FFF3E0', // 밝은 주황색
+            '행복': '#FFF8E1', // 기쁨과 동일
+            '화남': '#FFEBEE', // 분노와 동일
+            '두려움': '#F3E5F5', // 불안과 동일
+            '놀람': '#E8F5E8' // 당황과 동일
+        };
+        return colorMap[emotion] || '#FFF8E1'; // 기본값
     };
 
     const handleSaveDiary = async () => {
         try {
             const diaryContent = diaryData?.diary || diary;
-            const emotion = diaryData?.emotionSummary?.dominantEmotion || finalEmotion;
+            const emotion = finalEmotion; // 백엔드에서 emotionSummary가 제거됨
             
             if (!conversationId) {
                 throw new Error('대화 ID가 없습니다');
@@ -186,10 +222,13 @@ export default function DiaryResult({ route }: Props) {
         musicRecommendations: musicRecommendations
     };
 
+    const currentEmotion = displayData.emotionSummary?.dominantEmotion || finalEmotion;
+    const backgroundColor = getEmotionBackgroundColor(currentEmotion);
+
     return (
         <SafeAreaView 
             className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : ''}`}
-            style={!settings.isHighContrastMode ? { backgroundColor: '#FFF8E1' } : {}}
+            style={!settings.isHighContrastMode ? { backgroundColor: backgroundColor } : {}}
         >
             <ScrollView className="flex-1">
                 {/* 상단 감정 이미지 */}
@@ -296,7 +335,7 @@ export default function DiaryResult({ route }: Props) {
                         ]}
                     >
                         <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} text-gray-800`}>
-                            📤 일기 공유하기
+                            일기 공유하기
                         </Text>
                     </TouchableOpacity>
 
