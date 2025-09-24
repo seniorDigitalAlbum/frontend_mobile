@@ -46,45 +46,67 @@ export interface FacialEmotionAnalysisResponse {
  */
 export const predictEmotionApi = async (imageUri: string): Promise<EmotionAnalysisResult | null> => {
   try {
-    const apiUrl = `${getYoloEmotionApiUrl()}/predict_emotion`;
+    const baseUrl = getYoloEmotionApiUrl();
+    const apiUrl = `${baseUrl}/predict_emotion`;
     
-    // 먼저 서버 연결 테스트 (POST 메서드로)
-    console.log('서버 연결 테스트 시작');
+    // 먼저 서버 연결 테스트 (GET 메서드로 간단히)
+    console.log('🔍 YOLO Base URL:', baseUrl);
+    console.log('🔍 YOLO Full API URL:', apiUrl);
+    console.log('서버 연결 테스트 시작:', apiUrl);
     try {
-      const testFormData = new FormData();
-      testFormData.append('test', 'connection');
-      
-      const testResponse = await fetch(apiUrl, {
-        method: 'POST',
-        body: testFormData,
+      const testResponse = await fetch(apiUrl.replace('/predict_emotion', '/health'), {
+        method: 'GET',
+        timeout: 5000, // 5초 타임아웃
       });
       console.log('서버 연결 테스트 응답:', testResponse.status, testResponse.statusText);
     } catch (testError) {
       console.error('서버 연결 테스트 실패:', testError);
+      console.log('감정 분석 서버가 실행되지 않거나 접근할 수 없습니다. 모의 데이터를 사용합니다.');
+      // 모의 감정 분석 결과 반환
+      return {
+        emotion: 'neutral',
+        confidence: 0.75,
+        bounding_box: [0, 0, 100, 100],
+        mock: true
+      };
     }
     
-    // Base64 데이터를 Blob으로 변환
-    const base64Data = imageUri.split(',')[1];
+    // 이미지 URI 처리 (파일 URI 또는 Base64)
+    const formData = new FormData();
     
-    // Base64 데이터 유효성 검사
-    if (!base64Data || base64Data.length % 4 !== 0) {
-      console.error('잘못된 Base64 데이터:', base64Data?.substring(0, 50) + '...');
+    if (imageUri.startsWith('file://')) {
+      // 파일 URI인 경우
+      formData.append('file', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'image.jpg',
+      } as any);
+    } else if (imageUri.startsWith('data:')) {
+      // Base64 데이터인 경우
+      const base64Data = imageUri.split(',')[1];
+      
+      // Base64 데이터 유효성 검사
+      if (!base64Data || base64Data.length % 4 !== 0) {
+        console.error('잘못된 Base64 데이터:', base64Data?.substring(0, 50) + '...');
+        return null;
+      }
+      
+      // Base64 패딩 추가 (필요한 경우)
+      const paddedBase64 = base64Data + '='.repeat((4 - base64Data.length % 4) % 4);
+      
+      const byteCharacters = atob(paddedBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/jpeg' });
+      
+      formData.append('file', blob, 'image.jpg');
+    } else {
+      console.error('지원하지 않는 이미지 URI 형식:', imageUri);
       return null;
     }
-    
-    // Base64 패딩 추가 (필요한 경우)
-    const paddedBase64 = base64Data + '='.repeat((4 - base64Data.length % 4) % 4);
-    
-    const byteCharacters = atob(paddedBase64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'image/jpeg' });
-    
-    const formData = new FormData();
-    formData.append('file', blob, 'image.jpg');
 
     console.log('FormData 생성 완료, API 요청 전송 중...');
     console.log('전송할 이미지 URI:', imageUri);

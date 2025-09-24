@@ -1,14 +1,18 @@
-import { View, Text, SafeAreaView, TouchableOpacity, Image, Switch } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, Image, Switch, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import profileService from '../services/profileService';
 import { Profile } from '../types/profile';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { useUser } from '../contexts/UserContext';
 
 export default function MyPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const { settings, toggleLargeTextMode, toggleHighContrastMode } = useAccessibility();
+  const { logout, user } = useUser();
+  const navigation: any = useNavigation();
 
   useEffect(() => {
     loadProfile();
@@ -17,12 +21,96 @@ export default function MyPage() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const fetchedProfile = await profileService.getProfile();
-      setProfile(fetchedProfile);
+      
+      // UserContext에서 사용자 정보 가져오기
+      if (user) {
+        const userProfile: Profile = {
+          id: user.id,
+          name: user.name,
+          phone: user.phone,
+          profileImage: user.profileImage,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        };
+        setProfile(userProfile);
+        console.log('🧪 UserContext에서 프로필 로드:', userProfile);
+      } else {
+        // UserContext에 사용자 정보가 없으면 API에서 가져오기 시도
+        try {
+          const fetchedProfile = await profileService.getProfile();
+          setProfile(fetchedProfile);
+        } catch (apiError) {
+          console.error('API에서 프로필 로드 실패:', apiError);
+          // 기본값 설정
+          setProfile({
+            id: '1',
+            name: '사용자',
+            phone: '010-0000-0000',
+            profileImage: undefined,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
     } catch (error) {
       console.error('Failed to load profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    console.log('🧪 로그아웃 시작');
+    
+    try {
+      await logout();
+      console.log('🧪 로그아웃 완료');
+      
+      // 강제로 로그인 화면으로 이동
+      setTimeout(() => {
+        try {
+          console.log('🧪 네비게이션 시도 시작');
+          
+          // 방법 1: 직접 navigate 시도
+          try {
+            navigation.navigate('Login');
+            console.log('🧪 navigate 성공');
+            return;
+          } catch (navError1) {
+            console.log('🧪 navigate 실패:', navError1);
+          }
+          
+          // 방법 2: 부모 네비게이션 navigate
+          try {
+            navigation.getParent()?.navigate('Login');
+            console.log('🧪 부모 navigate 성공');
+            return;
+          } catch (navError2) {
+            console.log('🧪 부모 navigate 실패:', navError2);
+          }
+          
+          // 방법 3: 최상위 네비게이션 찾아서 reset
+          let parent = navigation.getParent();
+          while (parent?.getParent()) {
+            parent = parent.getParent();
+          }
+          
+          if (parent) {
+            parent.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+            console.log('🧪 최상위 reset 성공');
+          } else {
+            console.error('🧪 최상위 네비게이션을 찾을 수 없음');
+          }
+        } catch (navError) {
+          console.error('🧪 모든 네비게이션 방법 실패:', navError);
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
     }
   };
 
@@ -61,11 +149,17 @@ export default function MyPage() {
             {profile.name}
           </Text>
           <Text className={`mb-1 ${settings.isHighContrastMode ? 'text-white' : 'text-gray-500'}`}>
-            {profile.email}
-          </Text>
-          <Text className={`mb-8 ${settings.isHighContrastMode ? 'text-white' : 'text-gray-500'}`}>
             {profile.phone}
           </Text>
+          {user && (
+            <Text className={`mb-8 px-3 py-1 rounded-full text-sm font-medium ${
+              user.userType === 'SENIOR' 
+                ? 'bg-blue-100 text-blue-800' 
+                : 'bg-green-100 text-green-800'
+            }`}>
+                {user.userType === 'SENIOR' ? '시니어' : '가족'}
+            </Text>
+          )}
         </View>
 
         {/* 접근성 설정 섹션 */}
@@ -113,9 +207,27 @@ export default function MyPage() {
 
         </View>
 
+        {/* 테스트 화면 버튼 */}
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('TestScreen')}
+          className={`px-8 py-3 rounded-full mb-4 ${settings.isHighContrastMode ? 'bg-white' : 'bg-blue-500'}`}
+        >
+          <Text className={`text-lg font-semibold ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
+            🧪 테스트 화면
+          </Text>
+        </TouchableOpacity>
+
         {/* 로그아웃 버튼 */}
         <TouchableOpacity 
-          onPress={() => console.log('로그아웃')}
+          onPress={() => {
+            console.log('🧪 버튼 클릭됨!');
+            console.log('🧪 handleLogout 함수:', typeof handleLogout);
+            if (typeof handleLogout === 'function') {
+              handleLogout();
+            } else {
+              console.error('🧪 handleLogout이 함수가 아님!');
+            }
+          }}
           className={`px-8 py-3 rounded-full ${settings.isHighContrastMode ? 'bg-white' : 'bg-red-500'}`}
         >
           <Text className={`text-lg font-semibold ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>

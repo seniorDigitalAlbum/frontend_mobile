@@ -8,6 +8,7 @@ import AICharacter from '../components/AICharacter';
 import conversationApiService from '../services/api/conversationApiService';
 import microphoneApiService from '../services/api/microphoneApiService';
 import StartButton from '../components/StartButton';
+import { useUser } from '../contexts/UserContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MicrophoneTest'>;
 
@@ -19,6 +20,9 @@ export default function MicrophoneTest({ route, navigation }: Props) {
         cameraSessionId, 
         microphoneSessionId 
     } = route.params || { questionText: '질문이 없습니다.' };
+    
+    const { user } = useUser();
+    const userId = user?.userId || "1";
     
     const [isMicTested, setIsMicTested] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
@@ -51,7 +55,7 @@ export default function MicrophoneTest({ route, navigation }: Props) {
         try {
             // 대화 세션 시작
             const startResponse = await conversationApiService.startConversation({
-                userId: "1",
+                userId: userId,
                 questionId: questionId || 1
             });
 
@@ -64,7 +68,7 @@ export default function MicrophoneTest({ route, navigation }: Props) {
                 conversationId: startResponse.conversationId,
                 cameraSessionId: startResponse.cameraSessionId,
                 microphoneSessionId: startResponse.microphoneSessionId,
-                userId: "1"
+                userId: userId
             });
         } catch (error) {
             console.error('대화 세션 시작 실패:', error);

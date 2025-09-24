@@ -49,3 +49,11 @@ export const commonStyles = StyleSheet.create({
 
 // 그라데이션 색상 배열 (LinearGradient 컴포넌트용)
 export const gradientColors = ['#fad0c4', '#ffd1ff'];
+
+// 새로운 그라데이션 색상 배열
+export const blueGradientColors = ['#a1c4fd', '#c2e9fb'];
+
+// 그라데이션 배경 스타일
+export const gradientBackground = {
+  backgroundImage: 'linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%)',
+};

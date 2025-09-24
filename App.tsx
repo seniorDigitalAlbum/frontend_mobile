@@ -14,16 +14,28 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform, View } from 'react-native';
+import { Platform, View, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { DiaryProvider } from './contexts/DiaryContext';
 import { ConversationProvider } from './contexts/ConversationContext';
 import { AccessibilityProvider, useAccessibility } from './contexts/AccessibilityContext';
+import { UserProvider, useUser, UserType } from './contexts/UserContext';
 import GlobalAccessibilityWrapper from './components/GlobalAccessibilityWrapper';
 import './global.css';
 
 import Login from './screens/Login';
+import SignUp from './screens/SignUp';
+import UserRoleSelection from './screens/UserRoleSelection';
+import SignUp2 from './screens/SignUp2';
+import { KakaoUserInfo } from './services/kakaoAuthService';
+import GuardianConnection from './screens/GuardianConnection';
+import GuardianConnectionTest from './screens/GuardianConnectionTest';
+import GuardianMain from './screens/GuardianMain';
+import SeniorAlbumList from './screens/SeniorAlbumList';
+import KakaoConnection from './screens/KakaoConnection';
+import SeniorInfoConfirm from './screens/SeniorInfoConfirm';
 import Home from './screens/Home';
 import Album from './screens/Album';
 import MyPage from './screens/MyPage';
@@ -38,6 +50,8 @@ import DiaryResult from './screens/DiaryResult';
 import DiaryLoading from './screens/DiaryLoading';
 import ConversationEndLoading from './screens/ConversationEndLoading';
 import ConversationFlow from './components/ConversationFlow';
+import AlbumDetail from './screens/AlbumDetail';
+import TestScreen from './screens/TestScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 /**
@@ -46,6 +60,32 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
  */
 export type RootStackParamList = {
   Login: undefined;                    // 로그인 화면 (파라미터 없음)
+  SignUp: undefined;                   // 회원가입 화면 (파라미터 없음)
+  UserRoleSelection: {                 // 사용자 역할 선택 화면
+    kakaoUserInfo: KakaoUserInfo;      // 카카오 사용자 정보
+    jwtToken: string;                  // JWT 토큰
+  };
+  SignUp2: {                          // 회원가입 2단계 화면
+    userType: 'SENIOR' | 'GUARDIAN';  // 사용자 타입
+    phoneNumber: string;               // 인증된 전화번호
+    isKakao?: boolean;                 // 카카오 로그인 여부
+    kakaoName?: string;                // 카카오 이름
+    kakaoGender?: string;              // 카카오 성별
+  };
+  GuardianConnection: undefined;      // 보호자-시니어 연결 화면 (파라미터 없음)
+  GuardianConnectionTest: undefined;  // 보호자-시니어 연결 테스트 화면 (파라미터 없음)
+  GuardianMain: undefined;            // 보호자 메인 화면
+  SeniorAlbumList: {                  // 시니어 앨범 목록 화면
+    seniorId: number;
+    seniorName: string;
+  };
+  KakaoConnection: {                  // 카카오 시니어 연결 화면
+    guardianPhoneNumber: string;       // 보호자 전화번호
+  };
+  SeniorInfoConfirm: {                // 시니어 정보 확인 화면
+    seniorInfo: any;                   // 시니어 정보
+    guardianPhoneNumber: string;       // 보호자 전화번호
+  };
   MainTabs: undefined;                 // 메인 탭 네비게이터 (파라미터 없음)
   CameraTest: {                        // 카메라 테스트 화면
     questionText: string;              // 질문 텍스트
@@ -98,6 +138,12 @@ export type RootStackParamList = {
   ConversationEndLoading: {
     conversationId?: number;
   };
+  AlbumDetail: {
+    conversationId: number;
+    diary: string;
+    finalEmotion: string;
+  };
+  TestScreen: undefined;
 };
 
 // 네비게이터 인스턴스 생성
@@ -118,6 +164,12 @@ const linking = Platform.OS === 'web' ? {
         },
       },
       Login: 'login',
+      SignUp: 'signup',
+      UserRoleSelection: 'user-role-selection',
+      SignUp2: 'signup2',
+      GuardianConnection: 'guardian-connection',
+      KakaoConnection: 'kakao-connection',
+      SeniorInfoConfirm: 'senior-info-confirm',
       CameraTest: {
         path: 'camera-test',
         parse: {
@@ -158,6 +210,13 @@ const linking = Platform.OS === 'web' ? {
         },
       },
       DiaryLoading: 'diary-loading',
+      AlbumDetail: {
+        path: 'album-detail/:conversationId',
+        parse: {
+          conversationId: (conversationId: string) => parseInt(conversationId, 10),
+        },
+      },
+      TestScreen: 'test',
     },
   },
 } : undefined;
@@ -289,31 +348,70 @@ function MainTabs() {
 }
 
 /**
- * App 컴포넌트 - 애플리케이션의 루트 컴포넌트
- * 
- * 전체 애플리케이션의 구조를 설정하고 Context Provider들을 제공합니다.
- * 네비게이션 구조와 초기 라우트를 정의합니다.
- * 
- * @returns JSX.Element
+ * 보호된 화면 컴포넌트 - 인증된 사용자만 접근 가능 (현재 비활성화)
  */
-export default function App() {
+function ProtectedScreen({ children }: { children: React.ReactNode }) {
+  // 로그인 우회를 위해 바로 children을 렌더링
+  return <>{children}</>;
+}
+
+/**
+ * 인증 상태에 따른 네비게이션 컴포넌트 (현재 인증 우회)
+ */
+function AppNavigator() {
+  const navigationRef = useRef<any>(null);
+
+  // 로그인 우회를 위해 useEffect 제거
+
   return (
-    <AccessibilityProvider>
-      <GlobalAccessibilityWrapper>
-        <DiaryProvider>
-          <ConversationProvider>
-            <NavigationContainer linking={linking}>
-              <Stack.Navigator 
-                initialRouteName="MainTabs"
-                screenOptions={{
-                  headerShown: false
-                }}
-              >
+    <NavigationContainer ref={navigationRef} linking={linking}>
+      <Stack.Navigator 
+        // initialRouteName={user ? (user.userType === UserType.GUARDIAN ? "GuardianMain" : "MainTabs") : "Login"}
+        // initialRouteName="MainTabs"
+        initialRouteName="Login"
+        screenOptions={{
+          headerShown: false
+        }}
+      >
             {/* 로그인 화면 */}
             <Stack.Screen name="Login" component={Login} />
             
-            {/* 메인 탭 네비게이터 */}
-            <Stack.Screen name="MainTabs" component={MainTabs} />
+            {/* 회원가입 화면 */}
+            <Stack.Screen name="SignUp" component={SignUp} />
+            
+            {/* 사용자 역할 선택 화면 */}
+            <Stack.Screen name="UserRoleSelection" component={UserRoleSelection} />
+            
+            
+            {/* 회원가입 2단계 화면 */}
+            <Stack.Screen name="SignUp2" component={SignUp2} />
+            
+            {/* 보호자-시니어 연결 화면 (전화번호) */}
+            <Stack.Screen name="GuardianConnection" component={GuardianConnection} />
+            
+            {/* 보호자-시니어 연결 테스트 화면 */}
+            <Stack.Screen name="GuardianConnectionTest" component={GuardianConnectionTest} />
+            
+            {/* 보호자 메인 화면 */}
+            <Stack.Screen name="GuardianMain" component={GuardianMain} />
+            
+            {/* 시니어 앨범 목록 화면 */}
+            <Stack.Screen name="SeniorAlbumList" component={SeniorAlbumList} />
+            
+            {/* 카카오 시니어 연결 화면 */}
+            <Stack.Screen name="KakaoConnection" component={KakaoConnection} />
+            
+            {/* 시니어 정보 확인 화면 */}
+            <Stack.Screen name="SeniorInfoConfirm" component={SeniorInfoConfirm} />
+            
+            {/* 메인 탭 네비게이터 - 보호된 화면 */}
+            <Stack.Screen name="MainTabs">
+              {() => (
+                <ProtectedScreen>
+                  <MainTabs />
+                </ProtectedScreen>
+              )}
+            </Stack.Screen>
             
             {/* 대화 플로우 화면 */}
             <Stack.Screen name="ConversationFlow" component={ConversationFlowScreen} />
@@ -339,11 +437,37 @@ export default function App() {
             
             {/* 대화 종료 로딩 화면 */}
             <Stack.Screen name="ConversationEndLoading" component={ConversationEndLoading} />
-          </Stack.Navigator>
-        </NavigationContainer>
-      </ConversationProvider>
-    </DiaryProvider>
-    </GlobalAccessibilityWrapper>
- </AccessibilityProvider>
+            
+            {/* 앨범 상세 화면 */}
+            <Stack.Screen name="AlbumDetail" component={AlbumDetail} />
+            
+            {/* 테스트 화면 */}
+            <Stack.Screen name="TestScreen" component={TestScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+/**
+ * App 컴포넌트 - 애플리케이션의 루트 컴포넌트
+ * 
+ * 전체 애플리케이션의 구조를 설정하고 Context Provider들을 제공합니다.
+ * 네비게이션 구조와 초기 라우트를 정의합니다.
+ * 
+ * @returns JSX.Element
+ */
+export default function App() {
+  return (
+    <AccessibilityProvider>
+      <GlobalAccessibilityWrapper>
+        <UserProvider>
+          <DiaryProvider>
+            <ConversationProvider>
+              <AppNavigator />
+            </ConversationProvider>
+          </DiaryProvider>
+        </UserProvider>
+      </GlobalAccessibilityWrapper>
+    </AccessibilityProvider>
   );
 }

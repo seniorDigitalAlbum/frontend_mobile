@@ -55,18 +55,19 @@ class TTSService {
      * @returns Promise<void>
      */
     private async setPlaybackMode(): Promise<void> {
-        if (Platform.OS === 'ios') {
-            try {
-                await Audio.setAudioModeAsync({
-                    allowsRecordingIOS: false,
-                    playsInSilentModeIOS: true,
-                    staysActiveInBackground: false,
-                    shouldDuckAndroid: true,
-                    playThroughEarpieceAndroid: false,
-                });
-            } catch (error) {
-                console.error('iOS 오디오 세션 설정 실패:', error);
-            }
+        try {
+            console.log('🔊 오디오 세션을 Playback 모드로 설정 중...');
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+                playsInSilentModeIOS: true,
+                staysActiveInBackground: false,
+                shouldDuckAndroid: true,
+                playThroughEarpieceAndroid: false,
+            });
+            console.log('🔊 오디오 세션 설정 완료');
+        } catch (error) {
+            console.error('🔊 오디오 세션 설정 실패:', error);
+            // 에러가 발생해도 계속 진행
         }
     }
 
@@ -183,16 +184,25 @@ class TTSService {
             }
 
             // 오디오 로드 및 재생
+            console.log('🔊 TTS 오디오 재생 시작 - 형식:', format);
+            console.log('🔊 Base64 데이터 길이:', audioData.length);
+            
             const { sound } = await Audio.Sound.createAsync(
                 { uri: `data:audio/${format};base64,${audioData}` },
                 { 
-                    shouldPlay: true, // 로드와 동시에 재생 시작
+                    shouldPlay: false, // 먼저 로드만 하고 재생은 별도로
                     volume: volume,
                     isLooping: false,
                     rate: 1.0,
-                    shouldCorrectPitch: true
+                    shouldCorrectPitch: true,
+                    // iOS에서 오디오 세션 충돌 방지
+                    androidImplementation: 'MediaPlayer',
+                    iosImplementation: 'AVPlayer'
                 }
             );
+
+            // 로드 완료 후 재생
+            await sound.playAsync();
 
             this.sound = sound;
 

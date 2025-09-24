@@ -5,6 +5,7 @@ import { RootStackParamList } from '../App';
 import { useState, useEffect } from 'react';
 import DiaryLoading from '../components/DiaryLoading';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { useUser } from '../contexts/UserContext';
 import { API_BASE_URL } from '../config/api';
 import conversationApiService from '../services/api/conversationApiService';
 
@@ -26,7 +27,8 @@ export default function Chat({ route, navigation }: Props) {
     
     // 대화 세션 정보 추출
     const conversationId = route.params?.conversationId;
-    const userId = "1"; // 하드코딩된 사용자 ID
+    const { user } = useUser();
+    const userId = user?.userId || "1"; // UserContext에서 가져온 실제 사용자 ID
 
     // API에서 대화 메시지 가져오기
     useEffect(() => {
@@ -70,7 +72,7 @@ export default function Chat({ route, navigation }: Props) {
                 navigation.navigate('DiaryResult', {
                     diary: diaryResponse.diary,
                     conversationId: diaryResponse.conversationId,
-                    finalEmotion: diaryResponse.emotionSummary.dominantEmotion,
+                    finalEmotion: '기쁨', // 기본값으로 설정 (백엔드에서 emotionSummary 제거됨)
                     userId: "1",
                     musicRecommendations: diaryResponse.musicRecommendations
                 });

@@ -5,8 +5,10 @@ import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { conversationApiService, Conversation as ConversationType } from '../services/api/albumApiService';
+import conversationApiService, { Conversation as ConversationType } from '../services/api/conversationApiService';
+import albumApiService from '../services/api/albumApiService';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { useUser } from '../contexts/UserContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -39,7 +41,8 @@ export default function Album() {
     const navigation = useNavigation<NavigationProp>();
     const isLoadingRef = useRef(false);
 
-    const userId = "1"; // 하드코딩된 사용자 ID
+    const { user } = useUser();
+    const userId = user?.userId || "1"; // UserContext에서 가져온 실제 사용자 ID
 
     // 초기 데이터 로드 - 실제 API 호출
     useEffect(() => {
@@ -71,18 +74,55 @@ export default function Album() {
                 'hurt': '상처'
             };
 
-            // 대화 데이터를 일기 형태로 변환
-            const diaryData = completedAlbums.map(conversation => ({
-                id: conversation.id,
-                title: `${emotionMap[conversation.dominantEmotion] || conversation.dominantEmotion}의 하루`,
-                date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
-                    month: 'short',
-                    day: 'numeric'
-                }),
-                preview: conversation.diary ? conversation.diary.substring(0, 100) + '...' : '일기가 생성 중입니다...',
-                imageUrl: 'https://picsum.photos/200/200?random=' + conversation.id,
-                content: conversation.diary || '일기가 아직 생성되지 않았습니다.',
-                isPending: conversation.processingStatus !== 'COMPLETED'
+            // 대화 데이터를 일기 형태로 변환 (앨범 표지 정보 포함)
+            const diaryData = await Promise.all(completedAlbums.map(async (conversation) => {
+                // 앨범 표지 사진 조회
+                const albumPhotos = await albumApiService.getPhotos(conversation.id);
+                const coverPhoto = albumPhotos.find(photo => photo.isCover);
+                
+                // 제목 추출 함수
+                const extractTitleFromDiary = (diaryContent: string, dominantEmotion: string) => {
+                    if (diaryContent) {
+                        // 1. "제목:" 패턴에서 추출
+                        const titleMatch = diaryContent.match(/제목:\s*(.+?)(?:\n|$)/);
+                        if (titleMatch && titleMatch[1]) {
+                            const extractedTitle = titleMatch[1].trim();
+                            if (extractedTitle.length > 0) {
+                                return extractedTitle;
+                            }
+                        }
+                        
+                        // 2. 첫 번째 문장에서 추출 (제목이 없는 경우)
+                        const firstSentence = diaryContent.split('.').find(sentence => sentence.trim().length > 10);
+                        if (firstSentence) {
+                            const trimmed = firstSentence.trim();
+                            return trimmed.length > 20 ? trimmed.substring(0, 20) + '...' : trimmed;
+                        }
+                    }
+                    
+                    // 3. 감정 기반 제목
+                    if (dominantEmotion && emotionMap[dominantEmotion]) {
+                        return `${emotionMap[dominantEmotion]}의 하루`;
+                    }
+                    
+                    // 4. 최종 기본값
+                    return '특별한 하루';
+                };
+                
+                const extractedTitle = extractTitleFromDiary(conversation.diary, conversation.dominantEmotion);
+                
+                return {
+                    id: conversation.id,
+                    title: extractedTitle,
+                    date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
+                        month: 'short',
+                        day: 'numeric'
+                    }),
+                    preview: conversation.diary ? conversation.diary.substring(0, 100) + '...' : '일기가 생성 중입니다...',
+                    imageUrl: coverPhoto ? coverPhoto.imageUrl : 'https://picsum.photos/200/200?random=' + conversation.id,
+                    content: conversation.diary || '일기가 아직 생성되지 않았습니다.',
+                    isPending: conversation.processingStatus !== 'COMPLETED'
+                };
             }));
             
             setDiaries(diaryData);
@@ -98,8 +138,8 @@ export default function Album() {
     };
 
     const handleDiaryPress = async (diary: any) => {
-        // 일기 상세 화면으로 이동
-        console.log('일기 선택:', diary.title);
+        // 앨범 상세 화면으로 이동
+        console.log('앨범 선택:', diary.title);
         
         try {
             // 백엔드에서 일기 상세 정보 조회
@@ -107,20 +147,23 @@ export default function Album() {
             const diaryDetail = await conversationApiService.getDiaryByConversation(diary.id);
             
             if (diaryDetail) {
-                navigation.navigate('DiaryResult', {
-                    diary: diaryDetail.diary,
+                // 앨범 상세 페이지로 이동
+                navigation.navigate('AlbumDetail', {
                     conversationId: diaryDetail.conversationId,
-                    finalEmotion: diaryDetail.emotionSummary.dominantEmotion,
-                    userId: userId,
-                    musicRecommendations: diaryDetail.musicRecommendations
+                    diary: diaryDetail.diary,
+                    title: diaryDetail.title, // 생성된 제목 전달
+                    finalEmotion: diaryDetail.emotionSummary?.dominantEmotion || '기쁨'
                 });
             } else {
                 console.error('일기 상세 정보를 찾을 수 없습니다.');
                 // Context에서 일기 데이터 확인 (fallback)
                 const diaryFromContext = getDiaryById(diary.id);
                 if (diaryFromContext && diaryFromContext.content) {
-                    navigation.navigate('DiaryResult', { 
-                        diary: diaryFromContext.content 
+                    navigation.navigate('AlbumDetail', { 
+                        conversationId: diary.id,
+                        diary: diaryFromContext.content,
+                        title: diaryFromContext.title || '특별한 하루', // fallback 제목
+                        finalEmotion: '기쁨'
                     });
                 }
             }
@@ -129,8 +172,11 @@ export default function Album() {
             // Context에서 일기 데이터 확인 (fallback)
             const diaryFromContext = getDiaryById(diary.id);
             if (diaryFromContext && diaryFromContext.content) {
-                navigation.navigate('DiaryResult', { 
-                    diary: diaryFromContext.content 
+                navigation.navigate('AlbumDetail', { 
+                    conversationId: diary.id,
+                    diary: diaryFromContext.content,
+                    title: diaryFromContext.title || '특별한 하루', // fallback 제목
+                    finalEmotion: '기쁨'
                 });
             }
         }

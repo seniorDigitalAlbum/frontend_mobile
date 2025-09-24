@@ -4,13 +4,18 @@ import Constants from 'expo-constants';
 
 //동적 ip 가져오는 함수
 const getDevServerIp = () => {
-
-  const debuggerHost = Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  // Expo 54에서는 Constants.manifest 사용
+  const debuggerHost = Constants.manifest?.debuggerHost || Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  console.log('🔍 getDevServerIp debuggerHost:', debuggerHost);
+  
   if (!debuggerHost) {
-    return null;
+    console.log('🔍 debuggerHost가 없음, 172.21.255.132 사용');
+    return '172.21.255.132'; // 하드코딩된 IP 사용
   }
   // 포트 번호 제외
-  return debuggerHost.split(':')[0];
+  const ip = debuggerHost.split(':')[0];
+  console.log('🔍 추출된 IP:', ip);
+  return ip;
 };
 
 const isDevelopment = __DEV__;
@@ -20,7 +25,16 @@ const isWeb = Platform.OS === 'web';
 // YOLO 감정 분석 API용 동적 IP 가져오는 함수
 export const getYoloEmotionApiUrl = () => {
   if (isDevelopment) {
-    return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_DEV || 'http://emotion_yolo:8000';
+    if (isWeb) {
+      return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_DEV_WEB || 'http://localhost:8000';
+    } else {
+      // 네이티브(Expo Go) 환경일 때 동적 ip 사용
+      const devServerIp = getDevServerIp();
+      if (devServerIp) {
+        return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_DEV || `http://${devServerIp}:8000`;
+      }
+      return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_DEV || 'http://emotion_yolo:8000';
+    }
   } else {
     return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_PROD || 'http://emotion_yolo:8000';
   }
@@ -29,7 +43,16 @@ export const getYoloEmotionApiUrl = () => {
 // KoBERT 감정 분석 API용 동적 IP 가져오는 함수
 export const getKoBERTApiUrl = () => {
   if (isDevelopment) {
-    return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV || 'http://emotion_kobert:8001';
+    if (isWeb) {
+      return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV_WEB || 'http://localhost:8001';
+    } else {
+      // 네이티브(Expo Go) 환경일 때 동적 ip 사용
+      const devServerIp = getDevServerIp();
+      if (devServerIp) {
+        return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV || `http://${devServerIp}:8001`;
+      }
+      return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV || 'http://emotion_kobert:8001';
+    }
   } else {
     return process.env.EXPO_PUBLIC_KOBERT_API_URL_PROD || 'http://emotion_kobert:8001';
   }

@@ -61,14 +61,7 @@ export interface ProcessingStatusResponse {
 
 export interface DiaryResponse {
   conversationId: number;
-  summary: string;
   diary: string;
-  emotionSummary: {
-    dominantEmotion: string;
-    averageConfidence: number;
-    analyzedMessageCount: number;
-    emotionCounts: Record<string, number>;
-  };
   musicRecommendations: Array<{
     id: number;
     title: string;
@@ -78,6 +71,7 @@ export interface DiaryResponse {
     youtubeVideoId: string;
   }>;
   message: string;
+  success: boolean;
 }
 
 export interface SaveMessageRequest {
@@ -337,6 +331,78 @@ class ConversationApiService {
       console.error('Conversation service health check failed:', error);
       throw error;
     }
+  }
+
+  // ========== 일기 관련 API ==========
+
+  /**
+   * 특정 대화의 일기 상세 조회
+   */
+  async getDiaryByConversation(conversationId: number): Promise<any> {
+    try {
+      console.log('🔍 일기 조회 API 호출:', `${this.baseUrl}/${conversationId}/diary`);
+      const response = await this.request<any>(`/${conversationId}/diary`);
+      
+      if (response) {
+        // title이 없는 경우 content에서 추출
+        if (!response.title) {
+          const extractedTitle = this.generateDefaultTitle(response);
+          response.title = extractedTitle;
+        }
+        
+        // content에서 제목 부분을 제거하고 순수 내용만 추출
+        const cleanContent = this.extractContentWithoutTitle(response.diary);
+        response.diary = cleanContent;
+      }
+      
+      return response;
+    } catch (error) {
+      console.error(`Failed to get diary for conversation ${conversationId}:`, error);
+      return null;
+    }
+  }
+
+  // 기본 제목 생성 함수
+  private generateDefaultTitle(diaryDetail: any): string {
+    // 1. 일기 내용에서 "제목:" 패턴 추출
+    if (diaryDetail.diary) {
+      const titleMatch = diaryDetail.diary.match(/^제목:\s*([^\n\r]+)/);
+      if (titleMatch) {
+        return titleMatch[1].trim();
+      }
+    }
+    
+    // 2. 일기 내용에서 첫 번째 문장 추출
+    if (diaryDetail.diary) {
+      const firstSentence = diaryDetail.diary.split('.').find(sentence => sentence.trim().length > 10);
+      if (firstSentence) {
+        const trimmed = firstSentence.trim();
+        // 20자 이내로 제한
+        return trimmed.length > 20 ? trimmed.substring(0, 20) + '...' : trimmed;
+      }
+    }
+    
+    // 3. 감정 기반 제목 생성 (emotionSummary가 있는 경우)
+    if (diaryDetail.emotionSummary && diaryDetail.emotionSummary.dominantEmotion) {
+      const emotion = diaryDetail.emotionSummary.dominantEmotion;
+      return `${emotion}의 하루`;
+    }
+    
+    // 4. 최종 기본값
+    const today = new Date().toLocaleDateString('ko-KR', {
+      month: 'short',
+      day: 'numeric'
+    });
+    return `${today}의 기록`;
+  }
+
+  // content에서 제목 부분을 제거하는 함수
+  private extractContentWithoutTitle(content: string): string {
+    if (!content) return content;
+    
+    // "제목: ..." 패턴을 제거
+    const titlePattern = /^제목:\s*[^\n\r]+\s*/;
+    return content.replace(titlePattern, '').trim();
   }
 }
 

@@ -1,132 +1,323 @@
 import { API_BASE_URL } from '../../config/api';
 
-// 대화 관련 타입 정의
-export interface Conversation {
+export interface AlbumComment {
   id: number;
-  userId: string;
-  questionId: number;
-  cameraSessionId: string;
-  microphoneSessionId: string;
-  status: string;
+  conversationId: number;
+  author: string;
+  content: string;
   createdAt: string;
-  endedAt: string;
-  summary: string;
-  diary: string;
-  processingStatus: string;
-  dominantEmotion: string;
-  emotionConfidence: number;
-  emotionDistribution: string;
+  updatedAt: string;
+}
+
+export interface AlbumPhoto {
+  id: number;
+  conversationId: number;
+  imageUrl: string;
+  isCover: boolean;
+  uploadedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommentRequest {
+  content: string;
+  author?: string;
+}
+
+export interface PhotoRequest {
+  imageUrl: string;
+  uploadedBy?: string;
+}
+
+export interface UploadResponse {
+  success: boolean;
+  imageUrl?: string;
+  message: string;
 }
 
 export interface DiaryDetail {
   conversationId: number;
-  summary: string;
   diary: string;
-  emotionSummary: {
-    dominantEmotion: string;
-    emotionCounts: Record<string, number>;
-    averageConfidence: number;
-    analyzedMessageCount: number;
-  };
+  title?: string; // 선택적 필드로 추가
   musicRecommendations: MusicRecommendation[];
   message: string;
   success: boolean;
+  emotionSummary?: {
+    dominantEmotion: string;
+    averageConfidence: number;
+    analyzedMessageCount: number;
+    emotionCounts: { [key: string]: number };
+  };
 }
 
 export interface MusicRecommendation {
   id: number;
-  conversationId: number;
   title: string;
   artist: string;
-  mood: string;
-  youtubeLink: string;
-  youtubeVideoId: string;
-  createdAt: string;
+  youtubeVideoId?: string;
+  youtubeLink?: string;
 }
 
-class ConversationApiService {
-  private baseUrl = `${API_BASE_URL}/api/conversations`;
+class AlbumApiService {
+  private baseUrl = `${API_BASE_URL}/api/albums`;
 
-  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  // ========== 댓글 관련 API ==========
+
+  /**
+   * 특정 대화의 댓글 목록을 조회합니다.
+   */
+  async getComments(conversationId: number): Promise<AlbumComment[]> {
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
-        ...options,
-      });
-
+      const response = await fetch(`${this.baseUrl}/${conversationId}/comments`);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`댓글 조회 실패: ${response.status}`);
       }
-
       return await response.json();
     } catch (error) {
-      console.error('Conversation API request failed:', error);
+      console.error('댓글 조회 실패:', error);
       throw error;
     }
   }
 
-  // 사용자 대화 목록 조회 (앨범 목록)
-  async getConversationsByUser(userId: string = "1"): Promise<Conversation[]> {
+  /**
+   * 새로운 댓글을 추가합니다.
+   */
+  async addComment(conversationId: number, request: CommentRequest): Promise<AlbumComment> {
     try {
-      const response = await this.request<Conversation[]>(`/user/${userId}`);
-      return response;
+      const response = await fetch(`${this.baseUrl}/${conversationId}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`댓글 추가 실패: ${response.status}`);
+      }
+      return await response.json();
     } catch (error) {
-      console.error(`Failed to get conversations for user ${userId}:`, error);
-      return [];
+      console.error('댓글 추가 실패:', error);
+      throw error;
     }
   }
 
-  // 특정 대화의 일기 상세 조회
-  async getDiaryByConversation(conversationId: number): Promise<DiaryDetail | null> {
+  /**
+   * 댓글을 삭제합니다.
+   */
+  async deleteComment(commentId: number): Promise<void> {
     try {
-      const response = await this.request<DiaryDetail>(`/${conversationId}/diary`);
-      return response;
+      const response = await fetch(`${this.baseUrl}/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`댓글 삭제 실패: ${response.status}`);
+      }
     } catch (error) {
-      console.error(`Failed to get diary for conversation ${conversationId}:`, error);
-      return null;
+      console.error('댓글 삭제 실패:', error);
+      throw error;
     }
   }
 
-  // 사용자 대화 개수 조회
-  async getConversationCount(userId: string = "1"): Promise<number> {
+  // ========== 사진 관련 API ==========
+
+  /**
+   * 특정 대화의 사진 목록을 조회합니다.
+   */
+  async getPhotos(conversationId: number): Promise<AlbumPhoto[]> {
     try {
-      const conversations = await this.getConversationsByUser(userId);
-      return conversations.length;
+      const response = await fetch(`${this.baseUrl}/${conversationId}/photos`);
+      if (!response.ok) {
+        throw new Error(`사진 조회 실패: ${response.status}`);
+      }
+      return await response.json();
     } catch (error) {
-      console.error(`Failed to get conversation count for user ${userId}:`, error);
-      return 0;
+      console.error('사진 조회 실패:', error);
+      throw error;
     }
   }
 
-  // 특정 대화 조회
-  async getConversation(conversationId: number): Promise<Conversation | null> {
+  /**
+   * 특정 대화의 앨범 표지 사진을 조회합니다.
+   */
+  async getCoverPhoto(conversationId: number): Promise<AlbumPhoto | null> {
     try {
-      const response = await this.request<Conversation>(`/${conversationId}`);
-      return response;
+      const response = await fetch(`${this.baseUrl}/${conversationId}/photos/cover`);
+      if (response.status === 404) {
+        return null; // 표지 사진이 없는 경우
+      }
+      if (!response.ok) {
+        throw new Error(`표지 사진 조회 실패: ${response.status}`);
+      }
+      return await response.json();
     } catch (error) {
-      console.error(`Failed to get conversation ${conversationId}:`, error);
-      return null;
+      console.error('표지 사진 조회 실패:', error);
+      throw error;
     }
   }
 
-  // 감정별 대화 조회
-  async getConversationsByEmotion(userId: string = "1", emotion: string): Promise<Conversation[]> {
+  /**
+   * 새로운 사진을 추가합니다.
+   */
+  async addPhoto(conversationId: number, request: PhotoRequest): Promise<AlbumPhoto> {
     try {
-      const conversations = await this.getConversationsByUser(userId);
-      return conversations.filter(conv => conv.dominantEmotion === emotion);
+      const url = `${this.baseUrl}/${conversationId}/photos`;
+      console.log('🔍 사진 추가 API 호출:', url);
+      console.log('🔍 요청 데이터:', request);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      console.log('🔍 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔍 응답 내용:', errorText);
+        throw new Error(`사진 추가 실패: ${response.status}`);
+      }
+      return await response.json();
     } catch (error) {
-      console.error(`Failed to get conversations by emotion for user ${userId}:`, error);
-      return [];
+      console.error('사진 추가 실패:', error);
+      throw error;
     }
   }
 
+  /**
+   * 파일을 직접 업로드하여 새로운 사진을 추가합니다.
+   */
+  async addPhotoWithUpload(conversationId: number, imageUri: string, uploadedBy: string = '가족'): Promise<AlbumPhoto> {
+    try {
+      const url = `${this.baseUrl}/${conversationId}/photos/upload`;
+      console.log('🔍 사진 업로드 API 호출:', url);
+      
+      const formData = new FormData();
+      formData.append('file', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'image.jpg',
+      } as any);
+      formData.append('uploadedBy', uploadedBy);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          // 'Content-Type': 'multipart/form-data'는 FormData 사용 시 자동으로 설정
+        },
+        body: formData,
+      });
+
+      console.log('🔍 업로드 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔍 업로드 응답 내용:', errorText);
+        throw new Error(`사진 업로드 실패: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('사진 업로드 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 특정 사진을 앨범 표지로 설정합니다.
+   */
+  async setCoverPhoto(conversationId: number, photoId: number): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/${conversationId}/photos/${photoId}/set-cover`, {
+        method: 'PUT',
+      });
+
+      if (!response.ok) {
+        throw new Error(`표지 설정 실패: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('표지 설정 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 사진을 삭제합니다.
+   */
+  async deletePhoto(photoId: number): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseUrl}/photos/${photoId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error(`사진 삭제 실패: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('사진 삭제 실패:', error);
+      throw error;
+    }
+  }
+
+  // ========== 이미지 업로드 API ==========
+
+  /**
+   * 이미지를 S3에 업로드합니다.
+   */
+  async uploadImage(file: File): Promise<UploadResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${this.baseUrl}/upload/image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`이미지 업로드 실패: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * React Native에서 이미지를 업로드합니다.
+   */
+  async uploadImageRN(uri: string, name: string): Promise<UploadResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('image', {
+        uri: uri,
+        type: 'image/jpeg',
+        name: name,
+      } as any);
+
+      const response = await fetch(`${this.baseUrl}/upload/image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`이미지 업로드 실패: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      throw error;
+    }
+  }
+
+  // ========== 일기 관련 API는 conversationApiService로 이동됨 ==========
 }
 
-export const conversationApiService = new ConversationApiService();
-export default conversationApiService;
-
-
-
+export default new AlbumApiService();

@@ -36,7 +36,6 @@ class ProfileService {
     return {
       id: '1',
       name: '사용자',
-      email: 'user@example.com',
       phone: '010-1234-5678',
       profileImage: undefined,
     };

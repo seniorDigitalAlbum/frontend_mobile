@@ -150,7 +150,7 @@ export default function AnswerMic({
             if (microphoneSessionId && cameraSessionId) {
                 try {
                     const speechStartResponse = await microphoneApiService.startSpeech({
-                        userId: "1",
+                        userId: userId || "1",
                         microphoneSessionId: microphoneSessionId,
                         cameraSessionId: cameraSessionId
                     });
@@ -231,11 +231,23 @@ export default function AnswerMic({
                 try {
                     // 오디오 파일을 Base64로 변환
                     const audioBase64 = await convertAudioToBase64(uri);
+                    console.log('🔊 오디오 Base64 길이:', audioBase64.length);
+                    console.log('🔊 오디오 Base64 시작 부분:', audioBase64.substring(0, 100));
+                    console.log('🔊 녹음 시간:', recordingDuration, '초');
+                    console.log('🔊 전송할 microphoneSessionId:', microphoneSessionId);
+                    console.log('🔊 전송할 cameraSessionId:', cameraSessionId);
+                    console.log('🔊 전송할 conversationId:', conversationId);
+                    
+                    // 녹음 시간이 너무 짧으면 에러 처리
+                    if (recordingDuration < 1) {
+                        console.warn('⚠️ 녹음 시간이 너무 짧습니다 (1초 미만)');
+                        // 짧은 녹음에 대한 처리 로직 추가
+                    }
                     
                     const speechEndResponse = await microphoneApiService.endSpeech({
                         microphoneSessionId: microphoneSessionId,
                         cameraSessionId: cameraSessionId,
-                        userId: "1",
+                        userId: userId || "1",
                         conversationId: conversationId,
                         audioData: audioBase64 // Base64로 변환된 오디오 데이터
                     });

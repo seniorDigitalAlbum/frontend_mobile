@@ -3,6 +3,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { useState, useEffect } from 'react';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { useUser } from '../contexts/UserContext';
 import HiddenCamera from '../components/HiddenCamera';
 import AIQuestionSection from '../components/AIQuestionSection';
 import UserAnswerSection from '../components/UserAnswerSection';
@@ -30,8 +31,9 @@ export default function Conversation({ route, navigation }: Props) {
         microphoneSessionId
     } = route.params || {};
     
-    // userId 하드코딩
-    const userId = "1";
+    // UserContext에서 실제 사용자 ID 가져오기
+    const { user } = useUser();
+    const userId = user?.userId || "1";
     
     // questionText가 null이거나 undefined인 경우 기본값 설정
     const safeQuestionText = questionText || '안녕하세요, 오늘 하루는 어떠셨나요?';
@@ -134,7 +136,7 @@ export default function Conversation({ route, navigation }: Props) {
                         navigation.navigate('DiaryResult', {
                             diary: diaryResponse.diary,
                             conversationId: diaryResponse.conversationId,
-                            finalEmotion: diaryResponse.emotionSummary.dominantEmotion,
+                            finalEmotion: '기쁨', // 기본값으로 설정 (백엔드에서 emotionSummary 제거됨)
                             userId: "1",
                             musicRecommendations: diaryResponse.musicRecommendations
                         });

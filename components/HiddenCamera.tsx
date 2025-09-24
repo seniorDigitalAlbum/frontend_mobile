@@ -103,6 +103,8 @@ export default function HiddenCamera({
                                 quality: 0.8,
                                 base64: false, // form-data로 전송하므로 base64 불필요
                                 skipProcessing: true, // 빠른 처리
+                                mute: true, // 셔터음 비활성화
+                                shutterSound: false
                             });
                             
                             console.log('📸 이미지 캡처 완료:', photo?.uri);
