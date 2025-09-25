@@ -39,6 +39,19 @@ export default function DiaryResult({ route }: Props) {
     const [loading, setLoading] = useState(true);
     const [currentMusicIndex, setCurrentMusicIndex] = useState(0);
 
+    // 감정을 자연스러운 문장으로 매핑하는 함수
+    const getEmotionDescription = (emotion: string) => {
+        const emotionMap: { [key: string]: string } = {
+            '기쁨': '행복해',
+            '슬픔': '슬퍼',
+            '분노': '화가 나',
+            '불안': '불안해',
+            '상처': '상처받',
+            '당황': '당황해'
+        };
+        return emotionMap[emotion] || '감정이 드러나';
+    };
+
     // 일기 데이터 로드
     useEffect(() => {
         const loadDiaryData = async () => {
@@ -127,7 +140,7 @@ export default function DiaryResult({ route }: Props) {
             '화남': require('../assets/angry.png'),
             '불안': require('../assets/fear.png'),
             '당황': require('../assets/surprised.png'),
-            '상처': require('../assets/sad.jpg')
+            '상처': require('../assets/hurt.jpg')
         };
         return emotionMap[emotion] || require('../assets/happy.png');
     };
@@ -188,14 +201,20 @@ export default function DiaryResult({ route }: Props) {
             });
         } catch (error) {
             console.error('일기 저장 실패:', error);
-            // 에러 발생 시에도 앨범으로 이동
-            navigation.navigate('MainTabs' as never);
+            // 에러 발생 시에도 홈으로 이동 (스택 초기화)
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'MainTabs' }],
+            });
         }
     };
 
     const handleBackToHome = () => {
-        // 홈으로 돌아가기
-        navigation.navigate('MainTabs' as never);
+        // 모든 화면 스택을 초기화하고 MainTabs로 이동
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+        });
     };
 
     if (loading) {
@@ -228,7 +247,10 @@ export default function DiaryResult({ route }: Props) {
                     <View className={`${settings.isLargeTextMode ? 'w-32 h-32' : 'w-28 h-28'} bg-white rounded-full justify-center items-center mb-6 shadow-lg`}>
                         <Image 
                             source={getEmotionImage(displayData.emotionSummary?.dominantEmotion || finalEmotion)} 
-                            className={`${settings.isLargeTextMode ? 'w-20 h-20' : 'w-16 h-16'}`}
+                            style={{
+                                width: settings.isLargeTextMode ? 80 : 64,
+                                height: settings.isLargeTextMode ? 80 : 64,
+                            }}
                             resizeMode="contain"
                         />
                     </View>
@@ -245,7 +267,7 @@ export default function DiaryResult({ route }: Props) {
                 {/* 제목 */}
                 <View className={`items-center ${settings.isLargeTextMode ? 'mb-8' : 'mb-6'}`}>
                     <Text className={`font-bold ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                        이 대화를 할 때 {displayData.emotionSummary?.dominantEmotion || finalEmotion}해 보였어요.
+                        이 대화를 할 때 {getEmotionDescription(displayData.emotionSummary?.dominantEmotion || finalEmotion)} 보였어요.
                     </Text>
                 </View>
 
@@ -294,48 +316,6 @@ export default function DiaryResult({ route }: Props) {
 
                 {/* 버튼들 */}
                 <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'} space-y-4`}>
-
-                    <TouchableOpacity
-                        onPress={handleSaveDiary}
-                        className={`w-full items-center ${settings.isLargeTextMode ? 'py-6' : 'py-4'}`}
-                        activeOpacity={0.8}
-                        style={[
-                            commonStyles.cardStyle, 
-                            { 
-                                backgroundColor: '#4F46E5',
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 4,
-                                elevation: 3
-                            }
-                        ]}
-                    >
-                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} text-white`}>
-                            💾 일기 저장하기
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={() => console.log('일기 공유하기')}
-                        className={`w-full items-center ${settings.isLargeTextMode ? 'py-6' : 'py-4'}`}
-                        activeOpacity={0.8}
-                        style={[
-                            commonStyles.cardStyle, 
-                            { 
-                                backgroundColor: '#F5F5F5',
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 4,
-                                elevation: 3
-                            }
-                        ]}
-                    >
-                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} text-gray-800`}>
-                            일기 공유하기
-                        </Text>
-                    </TouchableOpacity>
 
                     <TouchableOpacity
                         onPress={handleBackToHome}

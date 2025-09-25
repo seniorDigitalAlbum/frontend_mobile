@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert, StatusBar } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { gradientColors } from '../styles/commonStyles';
+import { colors } from '../styles/commonStyles';
 import { LinearGradient } from 'expo-linear-gradient';
 import conversationApiService from '../services/api/conversationApiService';
 
@@ -24,7 +24,7 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
     const loadAlbums = async () => {
         setIsLoading(true);
         try {
-            console.log('시니어 앨범 목록 조회 시작:', seniorName);
+            console.log('시니어 공개 앨범 목록 조회 시작:', seniorName);
             
             // 시니어 ID를 userId로 사용하여 API 호출
             // 테스트 환경에서는 실제 userId를 사용해야 함
@@ -35,17 +35,21 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
             } else {
                 userId = seniorId.toString();
             }
-            const seniorAlbums = await conversationApiService.getConversationsByUser(userId);
-            console.log('API에서 받은 시니어 대화 목록:', seniorAlbums);
             
-            // COMPLETED 상태인 대화만 필터링 (완료된 대화만 앨범으로 표시)
-            const completedAlbums = seniorAlbums.filter(conversation => conversation.status === 'COMPLETED');
-            console.log('완료된 시니어 대화 목록:', completedAlbums);
+            // 시니어의 모든 완료된 대화 조회
+            const allAlbums = await conversationApiService.getConversationsByUser(userId);
+            console.log('API에서 받은 시니어 대화 목록:', allAlbums);
             
-            setAlbums(completedAlbums);
-            console.log('앨범 수:', completedAlbums.length);
+            // COMPLETED 상태이고 공개된 앨범만 필터링
+            const publicAlbums = allAlbums.filter(album => 
+                album.status === 'COMPLETED' && album.isPublic === true
+            );
+            console.log('공개된 앨범 목록:', publicAlbums);
+            
+            setAlbums(publicAlbums);
+            console.log('공개 앨범 수:', publicAlbums.length);
         } catch (error) {
-            console.error('앨범 목록 조회 실패:', error);
+            console.error('공개 앨범 목록 조회 실패:', error);
             Alert.alert('오류', '앨범 목록을 불러올 수 없습니다.');
         } finally {
             setIsLoading(false);
@@ -58,14 +62,38 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
         setRefreshing(false);
     };
 
-    const handleAlbumPress = (album: Conversation) => {
+    const handleAlbumPress = async (album: Conversation) => {
         console.log('앨범 선택:', generateAlbumTitle(album));
-        // 앨범 상세 페이지로 이동
-        navigation.navigate('AlbumDetail', { 
-            conversationId: album.id,
-            diary: album.diary || `${seniorName}님의 대화 기록`,
-            finalEmotion: album.dominantEmotion || '기본'
-        });
+        
+        try {
+            // 시니어와 동일하게 상세 데이터를 가져와서 AlbumDetail로 이동
+            const diaryDetail = await conversationApiService.getDiaryByConversation(album.id);
+            
+            if (diaryDetail) {
+                navigation.navigate('AlbumDetail', {
+                    conversationId: diaryDetail.conversationId,
+                    diary: diaryDetail.diary,
+                    title: diaryDetail.title,
+                    finalEmotion: diaryDetail.emotionSummary?.dominantEmotion || '기쁨',
+                    musicRecommendations: diaryDetail.musicRecommendations || []
+                });
+            } else {
+                // fallback: 기본 데이터로 이동
+                navigation.navigate('AlbumDetail', { 
+                    conversationId: album.id,
+                    diary: album.diary || `${seniorName}님의 대화 기록`,
+                    finalEmotion: '기쁨'
+                });
+            }
+        } catch (error) {
+            console.error('앨범 상세 조회 실패:', error);
+            // 에러 시에도 기본 데이터로 이동
+            navigation.navigate('AlbumDetail', { 
+                conversationId: album.id,
+                diary: album.diary || `${seniorName}님의 대화 기록`,
+                finalEmotion: '기쁨'
+            });
+        }
     };
 
     const getEmotionColor = (emotion: string) => {
@@ -115,102 +143,122 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
     const renderAlbumItem = (album: Conversation) => (
         <TouchableOpacity
             key={album.id}
-            className="bg-white rounded-xl p-4 mb-3 shadow-sm border border-gray-100"
+            className="mb-4"
             onPress={() => handleAlbumPress(album)}
         >
-            <View className="flex-row items-center">
-                {/* 앨범 썸네일 */}
-                <View className="w-16 h-16 rounded-lg bg-gray-200 mr-4 items-center justify-center">
-                    <Text className="text-gray-500 text-lg">📖</Text>
-                </View>
-                
-                {/* 앨범 정보 */}
-                <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-800 mb-1">
-                        {generateAlbumTitle(album)}
-                    </Text>
-                    <Text className="text-sm text-gray-600 mb-2">
-                        {formatDate(album.createdAt)}
-                    </Text>
-                    <View className={`px-2 py-1 rounded-full self-start ${getEmotionColor(album.dominantEmotion)}`}>
-                        <Text className="text-xs font-medium">
-                            {album.dominantEmotion || '기본'}
+            <View
+                className="rounded-2xl p-5 shadow-sm"
+                style={{
+                    backgroundColor: colors.beige,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    elevation: 4,
+                }}
+            >
+                <View className="flex-row items-center">
+                    {/* 앨범 썸네일 */}
+                    <View className="w-16 h-16 rounded-xl bg-white mr-4 items-center justify-center shadow-sm">
+                        <Text className="text-xl" style={{ color: colors.green }}>📖</Text>
+                    </View>
+                    
+                    {/* 앨범 정보 */}
+                    <View className="flex-1">
+                        <Text className="text-lg font-bold mb-1" style={{ color: colors.darkGreen }}>
+                            {generateAlbumTitle(album)}
                         </Text>
+                        <Text className="text-sm mb-3" style={{ color: colors.darkGreen }}>
+                            {formatDate(album.createdAt)}
+                        </Text>
+                        <View className={`px-3 py-1 rounded-full self-start ${getEmotionColor(album.dominantEmotion)}`}>
+                            <Text className="text-xs font-medium">
+                                {album.dominantEmotion || '기본'}
+                            </Text>
+                        </View>
+                    </View>
+                    
+                    {/* 화살표 */}
+                    <View className="w-8 h-8 rounded-full bg-white items-center justify-center shadow-sm">
+                        <Text className="text-lg" style={{ color: colors.green }}>→</Text>
                     </View>
                 </View>
-                
-                {/* 화살표 */}
-                <Text className="text-gray-400 text-lg">→</Text>
             </View>
         </TouchableOpacity>
     );
 
     return (
-        <LinearGradient
-            colors={gradientColors as [string, string]}
-            style={{ flex: 1 }}
-        >
+        <View className="flex-1">
+            <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
             <ScrollView 
                 className="flex-1"
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                <View className="flex-1 px-5 pt-10">
+                <View className="flex-1 px-6 pt-12">
                     {/* 헤더 */}
-                    <View className="mb-6">
+                    <View className="mb-8">
                         <TouchableOpacity
-                            className="mb-4"
+                            className="mb-6"
                             onPress={() => navigation.goBack()}
                         >
-                            <Text className="text-blue-500 text-base">← 뒤로가기</Text>
+                            <View className="flex-row items-center">
+                                <Text className="text-lg mr-2" style={{ color: colors.green }}>←</Text>
+                                <Text className="text-lg font-medium" style={{ color: colors.green }}>뒤로가기</Text>
+                            </View>
                         </TouchableOpacity>
                         
-                        <Text className="text-2xl font-bold text-gray-800 mb-2">
+                        <Text className="text-3xl font-bold mb-2" style={{ color: colors.darkGreen }}>
                             {seniorName}님의 앨범
                         </Text>
-                        <Text className="text-gray-600">
+                        <Text className="text-lg" style={{ color: colors.darkGreen }}>
                             {albums.length}개의 앨범이 있습니다
                         </Text>
                     </View>
 
                     {/* 앨범 목록 */}
                     {isLoading ? (
-                        <View className="items-center py-8">
-                            <Text className="text-gray-600">앨범 목록을 불러오는 중...</Text>
+                        <View className="items-center py-12">
+                            <Text className="text-lg" style={{ color: colors.darkGreen }}>앨범 목록을 불러오는 중...</Text>
                         </View>
                     ) : albums.length > 0 ? (
-                        <View className="mb-6">
+                        <View className="mb-8">
                             {albums.map(renderAlbumItem)}
                         </View>
                     ) : (
-                        <View className="items-center py-12">
-                            <Text className="text-gray-600 text-center mb-4">
-                                아직 생성된 앨범이 없습니다.
+                        <View className="items-center py-16">
+                            <View
+                                className="rounded-2xl p-8 mb-6 shadow-sm"
+                                style={{
+                                    backgroundColor: colors.beige,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 8,
+                                    elevation: 4,
+                                }}
+                            >
+                                <Text className="text-center text-xl font-bold mb-3" style={{ color: colors.darkGreen }}>
+                                    🔒 공개된 앨범이 없습니다
+                                </Text>
+                                <Text className="text-center text-base mb-2" style={{ color: colors.darkGreen }}>
+                                    {seniorName}님이 아직 앨범을 공개하지 않았습니다.
+                                </Text>
+                                <Text className="text-center text-sm" style={{ color: colors.darkGreen }}>
+                                    시니어가 앨범을 공개하면 여기에서 볼 수 있습니다.
+                                </Text>
+                            </View>
+                            <Text className="text-center text-lg mb-4" style={{ color: colors.darkGreen }}>
+                                아직 공개된 앨범이 없습니다.
                             </Text>
-                            <Text className="text-sm text-gray-500 text-center">
-                                시니어가 대화를 시작하면 앨범이 생성됩니다.
+                            <Text className="text-sm text-center" style={{ color: colors.darkGreen }}>
+                                시니어가 대화를 완료하고 앨범을 공개하면 여기에서 볼 수 있습니다.
                             </Text>
                         </View>
                     )}
-
-                    {/* 도움말 */}
-                    <View className="bg-white rounded-xl p-4 mb-6">
-                        <Text className="text-lg font-semibold text-gray-800 mb-3">
-                            앨범 정보
-                        </Text>
-                        <Text className="text-sm text-gray-600 mb-2">
-                            • 각 앨범은 시니어의 대화 내용을 담고 있습니다
-                        </Text>
-                        <Text className="text-sm text-gray-600 mb-2">
-                            • 감정 분석 결과를 통해 분류됩니다
-                        </Text>
-                        <Text className="text-sm text-gray-600 mb-2">
-                            • 앨범을 탭하면 상세 내용을 볼 수 있습니다
-                        </Text>
-                    </View>
                 </View>
             </ScrollView>
-        </LinearGradient>
+        </View>
     );
 }

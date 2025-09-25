@@ -127,11 +127,21 @@ class AlbumApiService {
    */
   async getPhotos(conversationId: number): Promise<AlbumPhoto[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/${conversationId}/photos`);
+      const url = `${this.baseUrl}/${conversationId}/photos`;
+      console.log('🔍 사진 목록 조회 API 호출:', url);
+      
+      const response = await fetch(url);
+      console.log('🔍 사진 조회 응답 상태:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`사진 조회 실패: ${response.status}`);
+        const errorText = await response.text();
+        console.error('🔍 사진 조회 오류 응답:', errorText);
+        throw new Error(`사진 조회 실패: ${response.status} - ${errorText}`);
       }
-      return await response.json();
+      
+      const photos = await response.json();
+      console.log('🔍 사진 조회 성공:', photos);
+      return photos;
     } catch (error) {
       console.error('사진 조회 실패:', error);
       throw error;
@@ -229,17 +239,109 @@ class AlbumApiService {
   /**
    * 특정 사진을 앨범 표지로 설정합니다.
    */
-  async setCoverPhoto(conversationId: number, photoId: number): Promise<void> {
+  async setCoverPhoto(conversationId: number, photoId: number): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/${conversationId}/photos/${photoId}/set-cover`, {
+      const url = `${this.baseUrl}/${conversationId}/photos/${photoId}/set-cover`;
+      console.log('🔍 표지 설정 API 호출:', url);
+      
+      const response = await fetch(url, {
         method: 'PUT',
       });
 
+      console.log('🔍 표지 설정 응답 상태:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`표지 설정 실패: ${response.status}`);
+        const errorText = await response.text();
+        console.error('🔍 표지 설정 오류 응답:', errorText);
+        return false; // 실패 시 false 반환
       }
+      
+      console.log('✅ 표지 설정 성공');
+      return true; // 성공 시 true 반환
     } catch (error) {
       console.error('표지 설정 실패:', error);
+      return false; // 예외 시 false 반환
+    }
+  }
+
+  /**
+   * 시니어의 공개된 앨범 목록을 조회합니다.
+   */
+  async getSeniorPublicAlbums(seniorUserId: string): Promise<any[]> {
+    try {
+      const url = `${this.baseUrl}/senior/${seniorUserId}/public-albums`;
+      console.log('🔍 시니어 공개 앨범 조회 API 호출:', url);
+      
+      const response = await fetch(url);
+      console.log('🔍 시니어 공개 앨범 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        console.log('🔍 시니어 공개 앨범 없음 또는 오류:', response.status);
+        return [];
+      }
+      
+      const result = await response.json();
+      console.log('✅ 시니어 공개 앨범 조회 성공:', result);
+      return result;
+    } catch (error) {
+      console.error('시니어 공개 앨범 조회 실패:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 시니어의 최신 표지 사진을 조회합니다.
+   */
+  async getSeniorCoverPhoto(seniorUserId: string): Promise<string | null> {
+    try {
+      const url = `${this.baseUrl}/senior/${seniorUserId}/cover-photo`;
+      console.log('🔍 시니어 표지 사진 조회 API 호출:', url);
+      
+      const response = await fetch(url);
+      console.log('🔍 시니어 표지 사진 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        console.log('🔍 시니어 표지 사진 없음 또는 오류:', response.status);
+        return null;
+      }
+      
+      const result = await response.json();
+      console.log('✅ 시니어 표지 사진 조회 성공:', result);
+      return result.imageUrl || null;
+    } catch (error) {
+      console.error('시니어 표지 사진 조회 실패:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 앨범 공개 상태를 업데이트합니다.
+   */
+  async updateAlbumVisibility(conversationId: number, isPublic: boolean): Promise<void> {
+    try {
+      const url = `${this.baseUrl}/${conversationId}/visibility`;
+      console.log('🔍 앨범 공개 상태 업데이트 API 호출:', url);
+      console.log('🔍 공개 상태:', isPublic);
+      
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isPublic }),
+      });
+
+      console.log('🔍 앨범 공개 상태 업데이트 응답 상태:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('🔍 앨범 공개 상태 업데이트 오류 응답:', errorText);
+        throw new Error(`앨범 공개 상태 업데이트 실패: ${response.status}`);
+      }
+      
+      console.log('✅ 앨범 공개 상태 업데이트 성공');
+    } catch (error) {
+      console.error('앨범 공개 상태 업데이트 실패:', error);
       throw error;
     }
   }

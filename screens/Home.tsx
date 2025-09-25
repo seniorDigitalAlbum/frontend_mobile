@@ -12,6 +12,9 @@ import RecommendedQuestion from '../components/RecommendedQuestion';
 import GuardianDashboard from '../components/GuardianDashboard';
 import { useUser, UserType } from '../contexts/UserContext';
 import { guardianApiService } from '../services/api/guardianApiService';
+import albumApiService from '../services/api/albumApiService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface LinkedSenior {
     id: number;
@@ -39,6 +42,21 @@ export default function Home() {
     const [itemsPerPage] = useState(5);
     const [linkedSeniors, setLinkedSeniors] = useState<LinkedSenior[]>([]);
     const [loadingSeniors, setLoadingSeniors] = useState(false);
+    const [coverPhotoInfo, setCoverPhotoInfo] = useState<any>(null);
+
+    // 표지 사진 정보 로드
+    const loadCoverPhotoInfo = useCallback(async () => {
+        try {
+            const storedInfo = await AsyncStorage.getItem('latestCoverPhoto');
+            if (storedInfo) {
+                const parsedInfo = JSON.parse(storedInfo);
+                setCoverPhotoInfo(parsedInfo);
+                console.log('✅ 표지 사진 정보 로드:', parsedInfo);
+            }
+        } catch (error) {
+            console.log('표지 사진 정보 로드 실패:', error);
+        }
+    }, []);
 
     const loadInitialQuestions = useCallback(async () => {
         try {
@@ -179,12 +197,22 @@ export default function Home() {
     useEffect(() => {
         loadInitialQuestions();
         loadRandomQuestion();
+        loadCoverPhotoInfo(); // 표지 사진 정보 로드
         
         // 가족인 경우 연결된 시니어 목록 로드
         if (effectiveUserType === UserType.GUARDIAN) {
             loadLinkedSeniors();
         }
-    }, [effectiveUserType, loadInitialQuestions, loadRandomQuestion]); // 메모이제이션된 함수들 추가
+    }, [effectiveUserType, loadInitialQuestions, loadRandomQuestion, loadCoverPhotoInfo]); // 메모이제이션된 함수들 추가
+
+    // 화면 포커스 시 표지 사진 정보 새로고침 (시니어용)
+    useFocusEffect(
+        useCallback(() => {
+            if (effectiveUserType === UserType.SENIOR) {
+                loadCoverPhotoInfo();
+            }
+        }, [loadCoverPhotoInfo, effectiveUserType])
+    );
 
     const loadLinkedSeniors = async () => {
         if (!effectiveUser?.userId) return;
@@ -363,7 +391,7 @@ export default function Home() {
                 ) : (
                     // 시니어: 기존 앨범 표지
                     <AlbumHero
-                        imageUrl="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop"
+                        imageUrl={coverPhotoInfo?.imageUrl || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop"}
                         onPress={() => navigation.navigate('Album')}
                     />
                 )}

@@ -10,6 +10,10 @@ export interface Conversation {
   status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
   createdAt: string;
   updatedAt: string;
+  isPublic?: boolean; // 앨범 공개 여부
+  summary?: string; // 대화 요약
+  diary?: string; // 생성된 일기
+  dominantEmotion?: string; // 주요 감정
 }
 
 export interface ConversationMessage {

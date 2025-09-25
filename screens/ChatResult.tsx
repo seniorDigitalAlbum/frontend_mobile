@@ -17,8 +17,11 @@ export default function ChatResult({ route, navigation }: Props) {
     };
 
     const handleEndChat = () => {
-        // 대화 종료 후 Home으로 이동
-        navigation.navigate('MainTabs');
+        // 대화 종료 후 모든 화면 스택을 초기화하고 Home으로 이동
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+        });
     };
 
     return (

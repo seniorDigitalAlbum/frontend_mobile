@@ -23,19 +23,17 @@ import { ConversationProvider } from './contexts/ConversationContext';
 import { AccessibilityProvider, useAccessibility } from './contexts/AccessibilityContext';
 import { UserProvider, useUser, UserType } from './contexts/UserContext';
 import GlobalAccessibilityWrapper from './components/GlobalAccessibilityWrapper';
+import { colors } from './styles/commonStyles';
 import './global.css';
 
 import Login from './screens/Login';
-import SignUp from './screens/SignUp';
 import UserRoleSelection from './screens/UserRoleSelection';
-import SignUp2 from './screens/SignUp2';
 import { KakaoUserInfo } from './services/kakaoAuthService';
 import GuardianConnection from './screens/GuardianConnection';
 import GuardianConnectionTest from './screens/GuardianConnectionTest';
 import GuardianMain from './screens/GuardianMain';
 import SeniorAlbumList from './screens/SeniorAlbumList';
 import KakaoConnection from './screens/KakaoConnection';
-import SeniorInfoConfirm from './screens/SeniorInfoConfirm';
 import Home from './screens/Home';
 import Album from './screens/Album';
 import MyPage from './screens/MyPage';
@@ -376,15 +374,12 @@ function AppNavigator() {
             {/* 로그인 화면 */}
             <Stack.Screen name="Login" component={Login} />
             
-            {/* 회원가입 화면 */}
-            <Stack.Screen name="SignUp" component={SignUp} />
+          
             
             {/* 사용자 역할 선택 화면 */}
             <Stack.Screen name="UserRoleSelection" component={UserRoleSelection} />
             
             
-            {/* 회원가입 2단계 화면 */}
-            <Stack.Screen name="SignUp2" component={SignUp2} />
             
             {/* 보호자-시니어 연결 화면 (전화번호) */}
             <Stack.Screen name="GuardianConnection" component={GuardianConnection} />
@@ -400,10 +395,7 @@ function AppNavigator() {
             
             {/* 카카오 시니어 연결 화면 */}
             <Stack.Screen name="KakaoConnection" component={KakaoConnection} />
-            
-            {/* 시니어 정보 확인 화면 */}
-            <Stack.Screen name="SeniorInfoConfirm" component={SeniorInfoConfirm} />
-            
+
             {/* 메인 탭 네비게이터 - 보호된 화면 */}
             <Stack.Screen name="MainTabs">
               {() => (
@@ -458,16 +450,18 @@ function AppNavigator() {
  */
 export default function App() {
   return (
-    <AccessibilityProvider>
-      <GlobalAccessibilityWrapper>
-        <UserProvider>
-          <DiaryProvider>
-            <ConversationProvider>
-              <AppNavigator />
-            </ConversationProvider>
-          </DiaryProvider>
-        </UserProvider>
-      </GlobalAccessibilityWrapper>
-    </AccessibilityProvider>
+    <View style={{ flex: 1, backgroundColor: colors.cream }}>
+      <AccessibilityProvider>
+        <GlobalAccessibilityWrapper>
+          <UserProvider>
+            <DiaryProvider>
+              <ConversationProvider>
+                <AppNavigator />
+              </ConversationProvider>
+            </DiaryProvider>
+          </UserProvider>
+        </GlobalAccessibilityWrapper>
+      </AccessibilityProvider>
+    </View>
   );
 }

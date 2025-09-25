@@ -74,11 +74,11 @@ export default function UserAnswerSection({
       {/* 버튼들 */}
       <View className="w-full">
         {/* 다음으로 버튼 - AI 응답을 받았을 때만 표시 */}
-        {hasAIResponse && (
+        {/* {hasAIResponse && (
           <View className="mb-4">
             <NextButton onPress={onNext} />
           </View>
-        )}
+        )} */}
         
         {/* 이 대화를 끝낼래요 - 줄 쳐진 텍스트로 표시 */}
         {isQuestionComplete && (

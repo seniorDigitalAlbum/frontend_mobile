@@ -152,7 +152,8 @@ export default function Album() {
                     conversationId: diaryDetail.conversationId,
                     diary: diaryDetail.diary,
                     title: diaryDetail.title, // 생성된 제목 전달
-                    finalEmotion: diaryDetail.emotionSummary?.dominantEmotion || '기쁨'
+                    finalEmotion: diaryDetail.emotionSummary?.dominantEmotion || '기쁨',
+                    musicRecommendations: diaryDetail.musicRecommendations || []
                 });
             } else {
                 console.error('일기 상세 정보를 찾을 수 없습니다.');
@@ -163,7 +164,8 @@ export default function Album() {
                         conversationId: diary.id,
                         diary: diaryFromContext.content,
                         title: diaryFromContext.title || '특별한 하루', // fallback 제목
-                        finalEmotion: '기쁨'
+                        finalEmotion: '기쁨',
+                        musicRecommendations: []
                     });
                 }
             }
