@@ -180,3 +180,159 @@ export const getApiConfig = () => {
         },
     };
 };
+
+/**
+ * 공통 API 클라이언트
+ * 모든 API 호출에서 JWT 토큰을 자동으로 포함
+ */
+class ApiClient {
+  private baseUrl: string;
+  private defaultHeaders: Record<string, string>;
+
+  constructor() {
+    this.baseUrl = API_BASE_URL;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+    };
+  }
+
+  /**
+   * JWT 토큰을 가져오는 함수 (플랫폼별 스토리지에서 가져옴)
+   */
+  private async getToken(): Promise<string | null> {
+    try {
+      if (Platform.OS === 'web') {
+        // 웹에서는 localStorage 사용
+        const userData = localStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          return user.token || null;
+        }
+      } else {
+        // React Native에서는 AsyncStorage 사용
+        const { getItem } = await import('@react-native-async-storage/async-storage');
+        const userData = await getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          return user.token || null;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to get token from storage:', error);
+    }
+    return null;
+  }
+
+  /**
+   * 공통 요청 메서드
+   */
+  async request<T>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<T> {
+    try {
+      const token = await this.getToken();
+      
+      const headers: Record<string, string> = {
+        ...this.defaultHeaders,
+        ...options.headers,
+      };
+
+      // JWT 토큰이 있으면 Authorization 헤더에 추가
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        // 401 Unauthorized인 경우 토큰이 무효화된 것으로 간주
+        if (response.status === 401) {
+          console.log('🔐 401 Unauthorized - 토큰이 무효화됨');
+          // 모든 사용자 데이터 제거
+          try {
+            if (Platform.OS === 'web') {
+              // 웹에서는 localStorage 사용 - 모든 사용자 데이터 제거
+              localStorage.removeItem('user');
+              localStorage.removeItem('userType');
+              console.log('🧹 모든 사용자 데이터 제거 완료');
+            } else {
+              // React Native에서는 AsyncStorage 사용 - 모든 사용자 데이터 제거
+              const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+              await AsyncStorage.multiRemove(['user', 'userType']);
+              console.log('🧹 모든 사용자 데이터 제거 완료');
+            }
+          } catch (cleanupError) {
+            console.error('❌ 토큰 무효화 후 정리 실패:', cleanupError);
+          }
+        }
+        
+        const errorText = await response.text();
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          // JSON 파싱 실패 시 원본 텍스트 사용
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * GET 요청
+   */
+  async get<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'GET',
+    });
+  }
+
+  /**
+   * POST 요청
+   */
+  async post<T>(endpoint: string, data?: any, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  /**
+   * PUT 요청
+   */
+  async put<T>(endpoint: string, data?: any, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  /**
+   * DELETE 요청
+   */
+  async delete<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: 'DELETE',
+    });
+  }
+}
+
+// API 클라이언트 인스턴스 생성 및 export
+export const apiClient = new ApiClient();
+export default apiClient;

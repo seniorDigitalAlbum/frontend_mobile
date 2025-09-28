@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StatusBar } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { UserType } from '../contexts/UserContext';
+import { UserType, useUser } from '../contexts/UserContext';
 import UserTypeSelector from '../components/UserTypeSelector';
 import { purpleGradientColors, lightPurpleGradientColors, colors } from '../styles/commonStyles';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 type Props = NativeStackScreenProps<RootStackParamList, 'UserRoleSelection'>;
 
 export default function UserRoleSelection({ route, navigation }: Props) {
+    const { user } = useUser();
     const {
         selectedUserType,
         setSelectedUserType,
@@ -31,7 +32,7 @@ export default function UserRoleSelection({ route, navigation }: Props) {
                     </Text>
                     {/* {getUserDisplayName()} */}
                     <Text className="text-lg text-center leading-6" style={{ color: colors.darkGreen }}>
-                        나림님,{'\n'}사용자 유형을 선택해주세요.
+                        {user?.name || '사용자'}님,{'\n'}사용자 유형을 선택해주세요.
                     </Text>
                 </View>
 

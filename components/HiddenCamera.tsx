@@ -8,22 +8,31 @@ interface HiddenCameraProps {
     isRecording?: boolean; // 마이크 녹음 상태
     onRecordingStart?: () => void; // 녹음 시작 콜백
     onRecordingStop?: () => void; // 녹음 종료 콜백
+    // 카메라 테스트용 props
+    isVisible?: boolean; // 카메라를 사용자에게 보일지 여부
+    isTestMode?: boolean; // 테스트 모드인지 여부
+    onTestFaceDetected?: (faceDetected: boolean, emotionData?: any) => void; // 테스트용 얼굴 인식 콜백
 }
 
 export default function HiddenCamera({ 
     onFaceDetected, 
     isRecording = false, 
     onRecordingStart, 
-    onRecordingStop 
+    onRecordingStop,
+    isVisible = false,
+    isTestMode = false,
+    onTestFaceDetected
 }: HiddenCameraProps) {
     const [permission, requestPermission] = useCameraPermissions();
     const [facing, setFacing] = useState<'front' | 'back'>('front');
     const cameraRef = useRef<any>(null);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [isImageSending, setIsImageSending] = useState(false);
+    const [isFaceDetected, setIsFaceDetected] = useState(false);
     const onFaceDetectedRef = useRef(onFaceDetected);
     const onRecordingStartRef = useRef(onRecordingStart);
     const onRecordingStopRef = useRef(onRecordingStop);
+    const onTestFaceDetectedRef = useRef(onTestFaceDetected);
     
     // 현재 상태를 추적하기 위한 ref
     const isRecordingRef = useRef(isRecording);
@@ -43,6 +52,7 @@ export default function HiddenCamera({
         onFaceDetectedRef.current = onFaceDetected;
         onRecordingStartRef.current = onRecordingStart;
         onRecordingStopRef.current = onRecordingStop;
+        onTestFaceDetectedRef.current = onTestFaceDetected;
     });
 
     const checkPermissions = async () => {
@@ -72,6 +82,66 @@ export default function HiddenCamera({
         checkPermissions();
     }, [permission]);
 
+
+    // 테스트 모드에서 1초마다 얼굴 인식 처리
+    useEffect(() => {
+        if (isTestMode && permission?.status === 'granted') {
+            console.log('📸 테스트 모드 - 1초마다 얼굴 인식 시작');
+            
+            const testFaceDetection = async () => {
+                if (cameraRef.current) {
+                    try {
+                        const photo = await cameraRef.current.takePictureAsync({
+                            quality: 0.8,
+                            base64: false,
+                            skipProcessing: true,
+                            mute: true,
+                            shutterSound: false
+                        });
+                        
+                        if (photo?.uri) {
+                            console.log('📸 테스트 모드 - 이미지 캡처 완료, YOLO 서버로 전송');
+                            
+                            // YOLO 서버로 얼굴 인식 요청
+                            const emotionResult = await emotionService.analyzeEmotion({
+                                uri: photo.uri,
+                                timestamp: new Date().toISOString()
+                            });
+                            
+                            console.log('📸 테스트 모드 - YOLO 응답:', emotionResult);
+                            
+                            // neutral이면 얼굴이 잘 안보인 것으로 판단
+                            const faceDetected = Boolean(emotionResult.success && emotionResult.emotion && emotionResult.emotion !== 'neutral');
+                            setIsFaceDetected(faceDetected);
+                            
+                            if (onTestFaceDetectedRef.current) {
+                                onTestFaceDetectedRef.current(faceDetected, emotionResult);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('테스트 얼굴 인식 실패:', error);
+                        setIsFaceDetected(false);
+                        if (onTestFaceDetectedRef.current) {
+                            onTestFaceDetectedRef.current(false, null);
+                        }
+                    }
+                }
+                
+                // 1초 후 다시 실행 (테스트 모드에서만)
+                if (isTestMode) {
+                    setTimeout(testFaceDetection, 1000);
+                }
+            };
+            
+            // 첫 번째 얼굴 인식 즉시 실행
+            testFaceDetection();
+        }
+        
+        return () => {
+            // 컴포넌트 언마운트 시 타이머 정리
+            console.log('📸 테스트 모드 - 얼굴 인식 중단');
+        };
+    }, [isTestMode, permission]);
 
     // 녹음 상태 변화 감지 및 이미지 전송 제어
     useEffect(() => {
@@ -186,16 +256,15 @@ export default function HiddenCamera({
     }
 
     return (
-        <View style={{ width: 1, height: 1, overflow: 'hidden' }}>
+        <View style={isVisible ? { flex: 1 } : { width: 1, height: 1, overflow: 'hidden' }}>
             <CameraView
-                style={{ width: 1, height: 1 }}
+                style={isVisible ? { flex: 1 } : { width: 1, height: 1 }}
                 facing={facing}
                 ref={cameraRef}
                 zoom={0}
                 animateShutter={false}
                 flash="off"
                 enableTorch={false}
-                enableZoomGesture={false}
             />
         </View>
     );

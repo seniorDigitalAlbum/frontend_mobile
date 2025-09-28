@@ -1,4 +1,4 @@
-import { View, Text, SafeAreaView, TouchableOpacity, Image, Switch, Alert } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, Image, Switch, Alert, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -60,57 +60,87 @@ export default function MyPage() {
   };
 
   const handleLogout = async () => {
-    console.log('🧪 로그아웃 시작');
+    console.log('🚪 handleLogout 함수 호출됨');
     
+    // 웹 환경에서는 window.confirm 사용, 모바일에서는 Alert.alert 사용
+    const isWeb = Platform.OS === 'web';
+    
+    if (isWeb) {
+      const shouldLogout = window.confirm('정말로 로그아웃하시겠습니까?');
+      if (!shouldLogout) {
+        console.log('🚪 로그아웃 취소됨');
+        return;
+      }
+    } else {
+      // 모바일에서는 Alert.alert 사용
+      Alert.alert(
+        '로그아웃',
+        '정말로 로그아웃하시겠습니까?',
+        [
+          {
+            text: '취소',
+            style: 'cancel',
+            onPress: () => {
+              console.log('🚪 로그아웃 취소됨');
+            },
+          },
+          {
+            text: '로그아웃',
+            style: 'destructive',
+            onPress: async () => {
+              await performLogout();
+            },
+          },
+        ]
+      );
+      return; // Alert.alert는 비동기이므로 여기서 return
+    }
+    
+    // 웹에서는 바로 로그아웃 실행
+    await performLogout();
+  };
+
+  const performLogout = async () => {
     try {
-      await logout();
-      console.log('🧪 로그아웃 완료');
+      console.log('🚪 로그아웃 시작');
       
-      // 강제로 로그인 화면으로 이동
+      // UserContext의 logout 함수 호출 (카카오 로그아웃 + 데이터 정리 포함)
+      await logout();
+      console.log('✅ 로그아웃 완료');
+      
+      // 로그인 화면으로 이동
       setTimeout(() => {
         try {
-          console.log('🧪 네비게이션 시도 시작');
+          console.log('🧭 로그인 화면으로 이동 시도');
           
-          // 방법 1: 직접 navigate 시도
-          try {
-            navigation.navigate('Login');
-            console.log('🧪 navigate 성공');
-            return;
-          } catch (navError1) {
-            console.log('🧪 navigate 실패:', navError1);
-          }
-          
-          // 방법 2: 부모 네비게이션 navigate
-          try {
-            navigation.getParent()?.navigate('Login');
-            console.log('🧪 부모 navigate 성공');
-            return;
-          } catch (navError2) {
-            console.log('🧪 부모 navigate 실패:', navError2);
-          }
-          
-          // 방법 3: 최상위 네비게이션 찾아서 reset
+          // 최상위 네비게이션 찾기
           let parent = navigation.getParent();
           while (parent?.getParent()) {
             parent = parent.getParent();
           }
           
           if (parent) {
+            // 네비게이션 스택을 완전히 리셋하고 로그인 화면으로 이동
             parent.reset({
               index: 0,
               routes: [{ name: 'Login' }],
             });
-            console.log('🧪 최상위 reset 성공');
+            console.log('✅ 로그인 화면으로 이동 완료');
           } else {
-            console.error('🧪 최상위 네비게이션을 찾을 수 없음');
+            // 최상위 네비게이션을 찾을 수 없는 경우 직접 navigate
+            navigation.navigate('Login');
+            console.log('✅ 직접 navigate로 로그인 화면 이동');
           }
         } catch (navError) {
-          console.error('🧪 모든 네비게이션 방법 실패:', navError);
+          console.error('❌ 네비게이션 실패:', navError);
+          // 네비게이션 실패 시 앱을 새로고침하거나 다른 방법 시도
+          Alert.alert('알림', '로그아웃되었습니다. 앱을 다시 시작해주세요.');
         }
-      }, 100);
+      }, 500); // 로그아웃 완료 후 0.5초 대기
       
     } catch (error) {
-      console.error('로그아웃 실패:', error);
+      console.error('❌ 로그아웃 실패:', error);
+      Alert.alert('오류', '로그아웃 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   };
 

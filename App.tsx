@@ -11,13 +11,13 @@
  * - 전역 스타일 적용
  */
 
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Platform, View, ActivityIndicator, LogBox } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DiaryProvider } from './contexts/DiaryContext';
 import { ConversationProvider } from './contexts/ConversationContext';
 import { AccessibilityProvider, useAccessibility } from './contexts/AccessibilityContext';
@@ -59,10 +59,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 export type RootStackParamList = {
   Login: undefined;                    // 로그인 화면 (파라미터 없음)
   SignUp: undefined;                   // 회원가입 화면 (파라미터 없음)
-  UserRoleSelection: {                 // 사용자 역할 선택 화면
-    kakaoUserInfo: KakaoUserInfo;      // 카카오 사용자 정보
-    jwtToken: string;                  // JWT 토큰
-  };
+  UserRoleSelection: undefined;        // 사용자 역할 선택 화면 (파라미터 없음)
   SignUp2: {                          // 회원가입 2단계 화면
     userType: 'SENIOR' | 'GUARDIAN';  // 사용자 타입
     phoneNumber: string;               // 인증된 전화번호
@@ -349,24 +346,120 @@ function MainTabs() {
  * 보호된 화면 컴포넌트 - 인증된 사용자만 접근 가능 (현재 비활성화)
  */
 function ProtectedScreen({ children }: { children: React.ReactNode }) {
-  // 로그인 우회를 위해 바로 children을 렌더링
+  const { user, isLoading } = useUser();
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    if (!isLoading && (!user || !user.token)) {
+      console.log('인증되지 않은 사용자 또는 JWT 토큰 없음 - Login으로 리다이렉트');
+      navigation.navigate('Login');
+    }
+  }, [user, isLoading, navigation]);
+
+  // 로딩 중이거나 인증되지 않은 경우 로딩 화면 표시
+  if (isLoading || !user || !user.token) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.cream }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return <>{children}</>;
 }
 
 /**
- * 인증 상태에 따른 네비게이션 컴포넌트 (현재 인증 우회)
+ * 인증 상태에 따른 네비게이션 컴포넌트
  */
 function AppNavigator() {
   const navigationRef = useRef<any>(null);
+  const { user, isLoading } = useUser();
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
 
-  // 로그인 우회를 위해 useEffect 제거
+  // 스토리지에서 사용자 정보를 직접 확인하여 초기 화면 결정
+  useEffect(() => {
+    const checkInitialRoute = async () => {
+      try {
+        let userData: string | null = null;
+        
+        if (Platform.OS === 'web') {
+          // 웹에서는 localStorage 사용
+          userData = localStorage.getItem('user');
+        } else {
+          // React Native에서는 AsyncStorage 사용
+          const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+          userData = await AsyncStorage.getItem('user');
+        }
+        
+        if (userData) {
+          const user = JSON.parse(userData);
+          console.log('🔍 스토리지에서 사용자 데이터 확인:', user);
+          console.log('🔍 user.token:', user.token);
+          console.log('🔍 user.userType:', user.userType);
+          
+          // JWT 토큰이 있어야만 홈으로 이동 가능
+          if (user.token) {
+            // userType이 유효한 경우에만 홈으로 이동
+            const hasValidUserType = user.userType && 
+                                  user.userType !== 'null' && 
+                                  user.userType !== '' && 
+                                  (user.userType === UserType.SENIOR || user.userType === UserType.GUARDIAN);
+            
+            console.log('🔍 hasValidUserType:', hasValidUserType);
+            
+            if (hasValidUserType) {
+              console.log('✅ JWT 토큰과 userType 모두 있음 - 홈으로 이동:', user.userType);
+              if (user.userType === UserType.GUARDIAN) {
+                setInitialRoute("GuardianMain");
+              } else if (user.userType === UserType.SENIOR) {
+                setInitialRoute("MainTabs");
+              } else {
+                console.log('⚠️ 알 수 없는 userType:', user.userType);
+                setInitialRoute("Login");
+              }
+            } else {
+              console.log('🆕 JWT 토큰은 있지만 userType이 없음 - Login으로 이동');
+              setInitialRoute("Login");
+            }
+          } else {
+            console.log('🚫 JWT 토큰 없음 - Login으로 이동');
+            setInitialRoute("Login");
+          }
+        } else {
+          console.log('스토리지에서 사용자 데이터 없음');
+          setInitialRoute("Login");
+        }
+      } catch (error) {
+        console.error('초기 화면 확인 실패:', error);
+        setInitialRoute("Login");
+      }
+    };
+
+    checkInitialRoute();
+  }, []);
+
+  // 초기 화면 결정
+  const getInitialRouteName = () => {
+    if (isLoading || initialRoute === null) {
+      return "Login"; // 로딩 중이거나 초기 라우트가 결정되지 않은 경우
+    }
+    
+    return initialRoute;
+  };
+
+  // 로딩 중이거나 초기 라우트가 결정되지 않은 경우 로딩 화면 표시
+  if (isLoading || initialRoute === null) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.cream }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking}>
       <Stack.Navigator 
-        // initialRouteName={user ? (user.userType === UserType.GUARDIAN ? "GuardianMain" : "MainTabs") : "Login"}
-        // initialRouteName="MainTabs"
-        initialRouteName="Login"
+        initialRouteName={getInitialRouteName()}
         screenOptions={{
           headerShown: false
         }}

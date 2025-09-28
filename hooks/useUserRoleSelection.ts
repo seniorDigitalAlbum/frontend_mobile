@@ -10,7 +10,7 @@ interface UseUserRoleSelectionProps {
 }
 
 export const useUserRoleSelection = ({ route, navigation }: UseUserRoleSelectionProps) => {
-    const { login } = useUser();
+    const { user, login, updateUser } = useUser();
     const { kakaoUserInfo, jwtToken, code } = route.params || {};
     const [selectedUserType, setSelectedUserType] = useState<UserType | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +22,28 @@ export const useUserRoleSelection = ({ route, navigation }: UseUserRoleSelection
             loadKakaoUserInfo();
         }
     }, [code]);
+
+    // userType이 이미 있는 경우 해당 홈으로 이동
+    useEffect(() => {
+        if (user?.userType) {
+            // userType이 유효한 경우에만 홈으로 이동
+            const hasValidUserType = user.userType && 
+                                  user.userType !== 'null' && 
+                                  user.userType !== '' && 
+                                  (user.userType === UserType.SENIOR || user.userType === UserType.GUARDIAN);
+            
+            if (hasValidUserType) {
+                console.log('✅ 이미 userType이 설정됨:', user.userType);
+                if (user.userType === UserType.GUARDIAN) {
+                    navigation.navigate('GuardianMain');
+                } else if (user.userType === UserType.SENIOR) {
+                    navigation.navigate('MainTabs');
+                }
+            } else {
+                console.log('🆕 userType이 유효하지 않음 - 역할 선택 화면 유지');
+            }
+        }
+    }, [user, navigation]);
 
     const loadKakaoUserInfo = async () => {
         await AuthFlowService.loadKakaoUserInfo(code, setUserData, setIsLoading, navigation);
@@ -35,6 +57,20 @@ export const useUserRoleSelection = ({ route, navigation }: UseUserRoleSelection
 
         try {
             setIsLoading(true);
+            
+            // UserContext에 사용자가 있는 경우 (카카오 로그인 후)
+            if (user) {
+                // 사용자 타입 업데이트
+                await updateUser({ userType: selectedUserType });
+                
+                // 다음 화면으로 이동
+                if (selectedUserType === UserType.GUARDIAN) {
+                    navigation.navigate('GuardianMain');
+                } else {
+                    navigation.navigate('MainTabs');
+                }
+                return;
+            }
             
             // 테스트 로그인의 경우 (카카오 정보가 없는 경우)
             if (!kakaoUserInfo && !userData?.kakaoUserInfo && !code) {

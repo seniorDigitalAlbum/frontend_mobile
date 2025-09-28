@@ -20,8 +20,6 @@ export interface UseCameraTestReturn {
     facing: 'front' | 'back';
     flash: 'off' | 'on';
     zoom: number;
-    isFaceDetected: boolean;
-    isDetecting: boolean;
     cameraHeight: number;
     
     // 함수
@@ -54,11 +52,8 @@ export const useCameraTest = (routeParams: any): UseCameraTestReturn => {
     const [facing, setFacing] = useState<'front' | 'back'>('front');
     const [flash, setFlash] = useState<'off' | 'on'>('off');
     const [zoom, setZoom] = useState(0);
-    const [isFaceDetected, setIsFaceDetected] = useState(false);
-    const [isDetecting, setIsDetecting] = useState(false);
     
     const cameraRef = useRef<any>(null);
-    const detectionInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // 카메라 높이 계산
     const cameraHeight = CameraUtils.getCameraHeight();
@@ -103,9 +98,9 @@ export const useCameraTest = (routeParams: any): UseCameraTestReturn => {
         setIsCameraReady(true);
     }, []);
 
-    // 얼굴 인식 핸들러
+    // 얼굴 인식 핸들러 (HiddenCamera에서 처리하므로 빈 함수)
     const handleFaceDetected = useCallback((faceData: any) => {
-        setIsFaceDetected(true);
+        // HiddenCamera에서 처리
     }, []);
 
     // 사진 캡처 핸들러
@@ -147,22 +142,11 @@ export const useCameraTest = (routeParams: any): UseCameraTestReturn => {
         initializeCamera();
     }, [permission, requestPermission]);
 
-    // 카메라가 준비되면 얼굴 인식 시작
+    // 카메라가 준비되면 상태 업데이트
     useEffect(() => {
         if (isCameraReady) {
-            setIsDetecting(true);
-            detectionInterval.current = FaceDetectionService.startFaceDetection(
-                (faceData: any) => {
-                    setIsFaceDetected(true);
-                }
-            );
+            // HiddenCamera에서 얼굴 인식을 처리하므로 여기서는 상태만 관리
         }
-        
-        return () => {
-            FaceDetectionService.stopFaceDetection(detectionInterval.current);
-            detectionInterval.current = null;
-            setIsDetecting(false);
-        };
     }, [isCameraReady]);
 
     // 시작 가능 여부
@@ -181,8 +165,6 @@ export const useCameraTest = (routeParams: any): UseCameraTestReturn => {
         facing,
         flash,
         zoom,
-        isFaceDetected,
-        isDetecting,
         cameraHeight,
         
         // 함수

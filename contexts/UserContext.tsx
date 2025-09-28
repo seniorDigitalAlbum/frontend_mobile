@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userService } from '../services/user/userService';
+import kakaoAuthService from '../services/kakaoAuthService';
 
 export enum UserType {
   SENIOR = 'SENIOR',
@@ -11,7 +14,7 @@ export interface User {
   userId: string;
   name: string;
   phone: string;
-  userType: UserType;
+  userType: UserType | null;
   profileImage?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -47,15 +50,29 @@ export function UserProvider({ children }: UserProviderProps) {
 
   const loadUserFromStorage = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('user');
-      const storedUserType = await AsyncStorage.getItem('userType');
+      let storedUser: string | null = null;
+      let storedUserType: string | null = null;
       
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      if (Platform.OS === 'web') {
+        // 웹에서는 localStorage 사용
+        storedUser = localStorage.getItem('user');
+        storedUserType = localStorage.getItem('userType');
+      } else {
+        // React Native에서는 AsyncStorage 사용
+        storedUser = await AsyncStorage.getItem('user');
+        storedUserType = await AsyncStorage.getItem('userType');
       }
       
-      if (storedUserType) {
-        setUserType(storedUserType as UserType);
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+        
+        // userType이 user 객체에 있으면 그것을 사용, 없으면 별도 저장된 값 사용
+        if (userData.userType) {
+          setUserType(userData.userType);
+        } else if (storedUserType) {
+          setUserType(storedUserType as UserType);
+        }
       }
     } catch (error) {
       console.error('Failed to load user from storage:', error);
@@ -69,8 +86,15 @@ export function UserProvider({ children }: UserProviderProps) {
       setUser(userData);
       setUserType(userData.userType);
       
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.setItem('userType', userData.userType);
+      if (Platform.OS === 'web') {
+        // 웹에서는 localStorage 사용
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('userType', userData.userType || '');
+      } else {
+        // React Native에서는 AsyncStorage 사용
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await AsyncStorage.setItem('userType', userData.userType || '');
+      }
     } catch (error) {
       console.error('Failed to save user to storage:', error);
       throw error;
@@ -79,13 +103,28 @@ export function UserProvider({ children }: UserProviderProps) {
 
   const logout = async () => {
     try {
+      console.log('🚪 로그아웃 시작');
+      
+      // 1. 로컬 상태 완전 초기화
       setUser(null);
       setUserType(null);
       
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('userType');
+      // 2. 스토리지에서 모든 사용자 데이터 제거
+      console.log('💾 모든 사용자 데이터 제거');
+      if (Platform.OS === 'web') {
+        // 웹에서는 localStorage 사용
+        localStorage.removeItem('user');
+        localStorage.removeItem('userType');
+        console.log('✅ localStorage에서 모든 사용자 데이터 제거 완료');
+      } else {
+        // React Native에서는 AsyncStorage 사용
+        await AsyncStorage.multiRemove(['user', 'userType']);
+        console.log('✅ AsyncStorage에서 모든 사용자 데이터 제거 완료');
+      }
+      
+      console.log('✅ 로그아웃 완료 (모든 데이터 정리)');
     } catch (error) {
-      console.error('Failed to clear user from storage:', error);
+      console.error('❌ 로그아웃 실패:', error);
       throw error;
     }
   };
@@ -94,12 +133,28 @@ export function UserProvider({ children }: UserProviderProps) {
     if (!user) return;
     
     try {
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      
-      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      // userType이 변경되는 경우 백엔드에 업데이트 요청
+      if (userData.userType && userData.userType !== user.userType) {
+        console.log('사용자 타입 업데이트:', userData.userType);
+        const response = await userService.updateUserType(user.userId, userData.userType, user.token);
+        
+        if (response.success && response.user) {
+          // 백엔드에서 업데이트된 사용자 정보로 로컬 상태 업데이트
+          const updatedUser = { ...user, ...response.user, userType: userData.userType };
+          setUser(updatedUser);
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          console.log('사용자 타입이 백엔드에 성공적으로 업데이트되었습니다.');
+        } else {
+          throw new Error(response.message || '사용자 타입 업데이트에 실패했습니다.');
+        }
+      } else {
+        // userType이 아닌 다른 필드 업데이트
+        const updatedUser = { ...user, ...userData };
+        setUser(updatedUser);
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      }
     } catch (error) {
-      console.error('Failed to update user in storage:', error);
+      console.error('Failed to update user:', error);
       throw error;
     }
   };

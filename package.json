@@ -46,7 +46,8 @@
     "react-native-youtube": "^2.0.2",
     "react-native-youtube-iframe": "^2.4.1",
     "tailwindcss": "^3.3.2",
-    "vision-camera-face-detector": "^0.1.8"
+    "vision-camera-face-detector": "^0.1.8",
+    "expo-image-manipulator": "~14.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
