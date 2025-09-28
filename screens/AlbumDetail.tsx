@@ -4,22 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { useState, useEffect } from 'react';
-import { useAccessibility } from '../contexts/AccessibilityContext';
-import { commonStyles } from '../styles/commonStyles';
+import { colors, commonStyles } from '../styles/commonStyles';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import albumApiService, { AlbumComment, AlbumPhoto } from '../services/api/albumApiService';
 import conversationApiService from '../services/api/conversationApiService';
 import { useUser, UserType } from '../contexts/UserContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlbumDetail'>;
 
 // 인터페이스는 API 서비스에서 import하므로 제거
 
 export default function AlbumDetail({ route, navigation }: Props) {
-  const { settings } = useAccessibility();
   const { userType, user } = useUser();
-  const { conversationId, diary, title, finalEmotion = '기쁨', musicRecommendations = [] } = route.params;
+  const { conversationId, diary, finalEmotion = '기쁨' } = route.params;
   
   const [comments, setComments] = useState<AlbumComment[]>([]);
   const [photos, setPhotos] = useState<AlbumPhoto[]>([]);
@@ -27,22 +26,58 @@ export default function AlbumDetail({ route, navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [diaryData, setDiaryData] = useState<any>(null);
-  const [displayTitle, setDisplayTitle] = useState<string>(title);
+  const [displayTitle, setDisplayTitle] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPublic, setIsPublic] = useState(false); // 앨범 공개 상태
 
-  // 일기 내용에서 제목을 제거하고 순수 내용만 추출하는 함수
-  const extractContentWithoutTitle = (diaryContent: string): string => {
-    if (!diaryContent) return diaryContent;
-    
-    // "제목:" 패턴이 있는지 확인
-    const titleMatch = diaryContent.match(/제목:\s*(.+?)(?:\n|$)/);
-    if (titleMatch) {
-      // 제목 부분을 제거하고 나머지 내용 반환
-      return diaryContent.replace(/제목:\s*(.+?)(?:\n|$)/, '').trim();
+  // 제목과 내용을 분리하는 함수
+  const separateTitleAndContent = (diaryContent: string) => {
+    if (!diaryContent) {
+      return {
+        title: '특별한 하루',
+        content: '일기가 아직 생성되지 않았습니다.'
+      };
     }
+
+    const lines = diaryContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
-    return diaryContent;
+    // "제목:" 패턴 찾기
+    const titleIndex = lines.findIndex(line => line.startsWith('제목:'));
+    
+    if (titleIndex !== -1) {
+      // 제목이 있는 경우
+      const title = lines[titleIndex].replace(/^제목:\s*/, '').trim();
+      const contentLines = lines.slice(titleIndex + 1);
+      return {
+        title: title || '특별한 하루',
+        content: contentLines.join(' ').trim() || '일기가 아직 생성되지 않았습니다.'
+      };
+    } else {
+      // 제목이 없는 경우 - 첫 번째 줄을 제목으로, 나머지를 내용으로
+      if (lines.length > 1) {
+        const firstLine = lines[0];
+        const title = firstLine.length > 10 ? firstLine.substring(0, 10) + '...' : firstLine;
+        const content = lines.slice(1).join(' ').trim();
+        return {
+          title: title,
+          content: content || '일기가 아직 생성되지 않았습니다.'
+        };
+      } else {
+        // 한 줄만 있는 경우
+        const singleLine = lines[0];
+        if (singleLine.length > 10) {
+          return {
+            title: singleLine.substring(0, 10) + '...',
+            content: singleLine.substring(10).trim() || '일기가 아직 생성되지 않았습니다.'
+          };
+        } else {
+          return {
+            title: singleLine,
+            content: '일기가 아직 생성되지 않았습니다.'
+          };
+        }
+      }
+    }
   };
 
   // YouTube 비디오 ID 추출 함수
@@ -65,12 +100,12 @@ export default function AlbumDetail({ route, navigation }: Props) {
   // 음악 자동 재생
   useEffect(() => {
     const playBackgroundMusic = async () => {
-      const musicList = diaryData?.musicRecommendations || musicRecommendations;
+      const musicList = diaryData?.musicRecommendations || [];
       if (musicList.length > 0) {
         try {
           // 첫 번째 추천 음악 재생
           const firstMusic = musicList[0];
-          console.log('배경음악 재생 시작:', firstMusic.title);
+          console.log('배경음악 재생 시작');
           
           // 오디오 모드 설정
           await Audio.setAudioModeAsync({
@@ -81,7 +116,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
             playThroughEarpieceAndroid: false,
           });
           
-          console.log('음악 재생 준비 완료:', firstMusic.youtubeLink);
+          console.log('음악 재생 준비 완료');
           setIsPlaying(true);
           
         } catch (error) {
@@ -99,15 +134,11 @@ export default function AlbumDetail({ route, navigation }: Props) {
   const getEmotionImage = (emotion: string) => {
     const emotionMap: Record<string, any> = {
       '기쁨': require('../assets/happy.png'),
-      '슬픔': require('../assets/sad.jpg'),
+      '슬픔': require('../assets/sad.png'),
       '분노': require('../assets/angry.png'),
-      '두려움': require('../assets/fear.png'),
-      '놀람': require('../assets/surprised.png'),
-      '행복': require('../assets/happy.png'),
-      '화남': require('../assets/angry.png'),
       '불안': require('../assets/fear.png'),
       '당황': require('../assets/surprised.png'),
-      '상처': require('../assets/hurt.jpg')
+      '상처': require('../assets/hurt.png')
     };
     return emotionMap[emotion] || require('../assets/happy.png');
   };
@@ -121,10 +152,6 @@ export default function AlbumDetail({ route, navigation }: Props) {
       '불안': '#F3E5F5', // 밝은 보라색
       '당황': '#E8F5E8', // 밝은 초록색
       '상처': '#FFF3E0', // 밝은 주황색
-      '행복': '#FFF8E1', // 기쁨과 동일
-      '화남': '#FFEBEE', // 분노와 동일
-      '두려움': '#F3E5F5', // 불안과 동일
-      '놀람': '#E8F5E8' // 당황과 동일
     };
     return colorMap[emotion] || '#FFF8E1'; // 기본값
   };
@@ -260,13 +287,16 @@ export default function AlbumDetail({ route, navigation }: Props) {
         const coverPhoto = photos.find(p => p.id === photoId);
         if (coverPhoto) {
           try {
-            const { setItem } = await import('@react-native-async-storage/async-storage');
-            await setItem('latestCoverPhoto', JSON.stringify({
+            const coverPhotoData = {
               conversationId,
               imageUrl: coverPhoto.imageUrl,
+              diary: diaryData?.diary || diary,
+              finalEmotion: finalEmotion,
               title: displayTitle,
-              timestamp: Date.now()
-            }));
+              createdAt: new Date().toISOString()
+            };
+            console.log('💾 저장할 표지 사진 데이터:', coverPhotoData);
+            await AsyncStorage.setItem('latestCoverPhoto', JSON.stringify(coverPhotoData));
             console.log('✅ 표지 사진 정보 저장 완료:', coverPhoto.imageUrl);
           } catch (storageError) {
             console.log('Storage 업데이트 실패 (무시됨):', storageError);
@@ -285,14 +315,14 @@ export default function AlbumDetail({ route, navigation }: Props) {
   const renderComment = ({ item }: { item: AlbumComment }) => (
     <View className="bg-gray-50 rounded-lg p-4 mb-3">
       <View className="flex-row justify-between items-center mb-2">
-        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+        <Text className="font-semibold text-lg text-gray-800">
           {item.author}
         </Text>
-        <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
+        <Text className="text-sm text-gray-500">
           {formatDateTime(item.createdAt)}
         </Text>
       </View>
-      <Text className={`${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-700'}`}>
+      <Text className="text-base text-gray-700">
         {item.content}
       </Text>
     </View>
@@ -319,26 +349,26 @@ export default function AlbumDetail({ route, navigation }: Props) {
               paddingVertical: 4,
             }}
           >
-            <Text className="text-white text-xs font-medium">표지</Text>
+            <Text className="text-white text-sm font-medium">표지</Text>
           </View>
         )}
       </View>
       
       <View className="mt-3">
-        <Text className={`font-medium ${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+        <Text className="font-medium text-base text-gray-800">
           {item.uploadedBy}
         </Text>
-        <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
+        <Text className="text-sm text-gray-500">
           {formatDateTime(item.createdAt)}
         </Text>
         
         {!item.isCover && (
           <TouchableOpacity
             onPress={() => handleSetAsCover(item.id)}
-            className="bg-blue-500 rounded-full px-3 py-1 mt-2"
-            style={{ alignSelf: 'flex-start' }}
+            className="rounded-full px-3 py-1 mt-2"
+            style={{ alignSelf: 'flex-start', backgroundColor: colors.green }}
           >
-            <Text className="text-white text-xs font-medium">표지로 설정</Text>
+            <Text className="text-white text-sm font-medium">표지로 설정</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -401,7 +431,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
       '슬픔': '슬퍼',
       '분노': '화가 나',
       '불안': '불안해',
-      '상처': '상처받',
+      '상처': '상처받아',
       '당황': '당황해',
       '기본': '평온해'
     };
@@ -413,22 +443,22 @@ export default function AlbumDetail({ route, navigation }: Props) {
 
   return (
     <SafeAreaView 
-      className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : ''}`}
-      style={!settings.isHighContrastMode ? { backgroundColor: backgroundColor } : {}}
+      className="flex-1"
+      style={{ backgroundColor: backgroundColor }}
     >
       {/* 헤더 */}
-      <View className={`flex-row items-center justify-between ${settings.isLargeTextMode ? 'px-6 py-4' : 'px-4 py-3'} ${settings.isHighContrastMode ? 'bg-black' : 'bg-transparent'}`}>
+      <View className="flex-row items-center justify-between px-4 py-3 bg-transparent">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           className="p-2"
         >
           <Ionicons 
             name="arrow-back" 
-            size={settings.isLargeTextMode ? 28 : 24} 
-            color={settings.isHighContrastMode ? 'white' : 'black'} 
+            size={24} 
+            color='black' 
           />
         </TouchableOpacity>
-                <Text className={`font-bold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+                <Text className="font-bold text-xl text-gray-800">
                   {displayTitle || '앨범 상세'}
                 </Text>
         
@@ -447,7 +477,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
                 size={16} 
                 color={isPublic ? "white" : "gray"} 
               />
-              <Text className={`font-medium ml-1 ${isPublic ? 'text-white' : 'text-gray-500'}`}>
+              <Text className={`font-medium ml-1 text-lg ${isPublic ? 'text-white' : 'text-gray-500'}`}>
                 공개
               </Text>
             </View>
@@ -465,7 +495,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
                 size={16} 
                 color={!isPublic ? "white" : "gray"} 
               />
-              <Text className={`font-medium ml-1 ${!isPublic ? 'text-white' : 'text-gray-500'}`}>
+              <Text className={`font-medium ml-1 text-lg ${!isPublic ? 'text-white' : 'text-gray-500'}`}>
                 비공개
               </Text>
             </View>
@@ -476,13 +506,13 @@ export default function AlbumDetail({ route, navigation }: Props) {
 
       <ScrollView className="flex-1">
         {/* 상단 감정 이미지 */}
-        <View className={`items-center ${settings.isLargeTextMode ? 'pt-20 pb-12' : 'pt-16 pb-10'}`}>
-          <View className={`${settings.isLargeTextMode ? 'w-32 h-32' : 'w-28 h-28'} bg-white rounded-full justify-center items-center mb-6 shadow-lg`}>
+        <View className="items-center pt-16 pb-10">
+          <View className="w-40 h-40 bg-white rounded-full justify-center items-center mb-6 shadow-lg">
             <Image 
               source={getEmotionImage(finalEmotion)} 
               style={{
-                width: settings.isLargeTextMode ? 80 : 64,
-                height: settings.isLargeTextMode ? 80 : 64,
+                width: 100,
+                height: 100,
               }}
               resizeMode="contain"
             />
@@ -490,38 +520,47 @@ export default function AlbumDetail({ route, navigation }: Props) {
         </View>
 
         {/* 제목 */}
-        <View className={`items-center ${settings.isLargeTextMode ? 'mb-8' : 'mb-6'}`}>
-          <Text className={`font-bold ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-            이 대화를 할 때 {getEmotionDescription(finalEmotion)} 보였어요.
+        <View className="items-center mb-6">
+          <Text className="font-bold text-3xl text-gray-800">
+            이 대화를 할 때{'\n'}{getEmotionDescription(finalEmotion)} 보였어요.
           </Text>
         </View>
 
         {/* 일기 내용 */}
-        <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
-          <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
-            {displayTitle && (
-              <Text className={`font-bold mb-4 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                {displayTitle}
-              </Text>
-            )}
-            <Text className={`leading-7 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-700'}`}>
-              {extractContentWithoutTitle(diaryData?.diary || diary)}
-            </Text>
+        <View className="px-6 mb-8">
+          <View style={[commonStyles.cardStyle, { padding: 24 }]}>
+            {(() => {
+              const diaryContent = diaryData?.diary || diary;
+              const { title, content } = separateTitleAndContent(diaryContent);
+              
+              return (
+                <>
+                  {/* 일기 제목 표시 */}
+                  <Text className="font-bold mb-4 text-2xl text-gray-800">
+                    {title}
+                  </Text>
+                  {/* 일기 내용 표시 */}
+                  <Text className="leading-8 text-2xl text-gray-700">
+                    {content}
+                  </Text>
+                </>
+              );
+            })()}
           </View>
         </View>
 
         {/* YouTube 음악 플레이어 */}
         {(() => {
-          const musicList = diaryData?.musicRecommendations || musicRecommendations;
+          const musicList = diaryData?.musicRecommendations || [];
           return musicList && musicList.length > 0;
         })() && (
-          <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
-            <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
-              <Text className={`font-semibold mb-4 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+          <View className="px-6 mb-8">
+            <View style={[commonStyles.cardStyle, { padding: 24 }]}>
+              <Text className="font-semibold mb-4 text-2xl text-gray-800">
                 🎵 추천 음악
               </Text>
               {(() => {
-                const musicList = diaryData?.musicRecommendations || musicRecommendations;
+                const musicList = diaryData?.musicRecommendations || [];
                 const firstMusic = musicList[0];
                 const videoId = firstMusic?.youtubeVideoId || extractYouTubeId(firstMusic?.youtubeLink || '') || 'dQw4w9WgXcQ';
                 const embedUrl = getYouTubeEmbedUrl(videoId);
@@ -536,7 +575,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
                 return (
                   <WebView
                     style={{ height: 200, width: '100%', backgroundColor: '#000' }}
-                    source={{ uri: embedUrl }}
+                    source={{ uri: getYouTubeEmbedUrl('bKSGV2VPmIs') }}
                     allowsInlineMediaPlayback={true}
                     mediaPlaybackRequiresUserAction={false}
                     allowsFullscreenVideo={true}
@@ -577,21 +616,12 @@ export default function AlbumDetail({ route, navigation }: Props) {
         )}
 
         {/* 사진 섹션 */}
-        <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
-          <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
+        <View className="px-6 mb-8">
+          <View style={[commonStyles.cardStyle, { padding: 24 }]}>
             <View className="flex-row justify-between items-center mb-4">
-              <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                📸 사진 ({photos.length})
+              <Text className="font-semibold text-2xl text-gray-800">
+                📸 사진
               </Text>
-              <TouchableOpacity
-                onPress={handleAddPhoto}
-                disabled={uploading}
-                className={`rounded-full px-4 py-2 ${uploading ? 'bg-gray-400' : 'bg-blue-500'}`}
-              >
-                <Text className="text-white font-medium">
-                  {uploading ? '업로드 중...' : '+ 사진 추가'}
-                </Text>
-              </TouchableOpacity>
             </View>
 
             {photos.length > 0 ? (
@@ -611,21 +641,31 @@ export default function AlbumDetail({ route, navigation }: Props) {
                 <Ionicons 
                   name="camera-outline" 
                   size={48} 
-                  color={settings.isHighContrastMode ? 'white' : 'gray'} 
+                  color='gray' 
                 />
-                <Text className={`mt-3 ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                <Text className="mt-3 text-xl text-gray-500">
                   아직 추가된 사진이 없습니다
                 </Text>
               </View>
             )}
+             <TouchableOpacity
+                 onPress={handleAddPhoto}
+                 disabled={uploading}
+                 className="rounded-full px-4 py-2 items-center"
+                 style={{ backgroundColor: uploading ? '#9CA3AF' : colors.green }}
+               >
+                <Text className="text-white font-medium text-2xl items-center">
+                  {uploading ? '업로드 중...' : '사진 올리기'}
+                </Text>
+              </TouchableOpacity>
           </View>
         </View>
 
         {/* 댓글 섹션 */}
-        <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
-          <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
-            <Text className={`font-semibold mb-4 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-              💬 댓글 ({comments.length})
+        <View className="px-6 mb-8">
+          <View style={[commonStyles.cardStyle, { padding: 24 }]}>
+            <Text className="font-semibold mb-4 text-xl text-gray-800">
+              댓글 ({comments.length})
             </Text>
 
             {/* 댓글 입력 */}
@@ -634,22 +674,23 @@ export default function AlbumDetail({ route, navigation }: Props) {
                 value={newComment}
                 onChangeText={setNewComment}
                 placeholder="댓글을 입력하세요..."
-                placeholderTextColor={settings.isHighContrastMode ? '#666' : '#999'}
+                placeholderTextColor='#999'
                 multiline
-                className={`${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'} border border-gray-200 rounded-lg px-3 py-2 mb-3`}
+                className="text-base text-gray-800 border border-gray-200 rounded-lg px-3 py-2 mb-3"
                 style={{
                   minHeight: 60,
                   textAlignVertical: 'top',
-                  color: settings.isHighContrastMode ? 'white' : 'black',
-                  backgroundColor: settings.isHighContrastMode ? '#333' : 'white'
+                  color: 'black',
+                  backgroundColor: 'white'
                 }}
               />
               <TouchableOpacity
                 onPress={handleAddComment}
                 disabled={!newComment.trim()}
-                className={`rounded-lg py-3 ${newComment.trim() ? 'bg-blue-500' : 'bg-gray-300'}`}
+                className="rounded-lg py-3"
+                style={{ backgroundColor: newComment.trim() ? colors.green : '#D1D5DB' }}
               >
-                <Text className="text-white text-center font-medium">댓글 추가</Text>
+                <Text className="text-white text-center font-medium text-xl">댓글 남기기</Text>
               </TouchableOpacity>
             </View>
 
@@ -667,9 +708,9 @@ export default function AlbumDetail({ route, navigation }: Props) {
                 <Ionicons 
                   name="chatbubble-outline" 
                   size={48} 
-                  color={settings.isHighContrastMode ? 'white' : 'gray'} 
+                  color='gray' 
                 />
-                <Text className={`mt-3 ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                <Text className="mt-3 text-lg text-gray-500">
                   첫 번째 댓글을 작성해보세요
                 </Text>
               </View>

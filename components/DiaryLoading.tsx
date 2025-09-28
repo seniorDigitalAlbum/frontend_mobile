@@ -1,17 +1,19 @@
 import { View, Text, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AICharacter from './AICharacter';
+import { colors } from '../styles/commonStyles';
 
 export default function DiaryLoading() {
     return (
         <View className="flex-1 bg-white justify-center items-center px-8">
-            {/* 로딩 아이콘 */}
+            {/* AI 캐릭터 */}
             <View className="mb-6">
-                <ActivityIndicator size="large" color="#8B5CF6" />
+                <AICharacter characterType="default" size={50} />
             </View>
             
-            {/* AI 캐릭터 아이콘 */}
-            <View className="w-20 h-20 bg-blue-100 rounded-full justify-center items-center mb-6">
-                <Ionicons name="person" size={50} color="#3B82F6" />
+            {/* 로딩 아이콘 */}
+            <View className="mb-6">
+                <ActivityIndicator size="large" color={colors.green} />
             </View>
             
             {/* 메인 텍스트 */}
@@ -27,7 +29,7 @@ export default function DiaryLoading() {
             
             {/* 로딩 바 */}
             <View className="w-64 h-2 bg-gray-200 rounded-full mt-8 overflow-hidden">
-                <View className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-pulse" />
+                <View className="h-full rounded-full animate-pulse" style={{ backgroundColor: colors.green }} />
             </View>
         </View>
     );

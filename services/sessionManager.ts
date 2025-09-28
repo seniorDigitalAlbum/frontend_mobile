@@ -14,7 +14,7 @@
 
 import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
-import cameraApiService from './api/cameraApiService';
+import { CameraService } from './cameraService';
 import microphoneApiService from './api/microphoneApiService';
 import ttsService from './audio/ttsService';
 
@@ -81,7 +81,7 @@ class SessionManager {
 
       // 프론트: 로컬 미디어 시작 (비디오·오디오 각각)
       // 카메라 세션 생성
-      const cameraSession = await cameraApiService.createSession({
+      const cameraSession = await CameraService.createSession({
         userId: config.userId
       });
 
@@ -146,7 +146,7 @@ class SessionManager {
       // 프론트: 로컬 트랙 stop/release
       if (this.currentCameraSessionId) {
         try {
-          await cameraApiService.endSession(this.currentCameraSessionId);
+          await CameraService.updateSessionStatus(this.currentCameraSessionId, { status: 'ENDED' });
           console.log('카메라 세션 삭제 완료:', this.currentCameraSessionId);
         } catch (error) {
           console.error('카메라 세션 삭제 실패:', error);

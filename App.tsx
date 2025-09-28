@@ -14,7 +14,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform, View, ActivityIndicator } from 'react-native';
+import { Platform, View, ActivityIndicator, LogBox } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { useEffect, useRef } from 'react';
@@ -449,6 +449,11 @@ function AppNavigator() {
  * @returns JSX.Element
  */
 export default function App() {
+  // 오류 메시지 숨기기
+  useEffect(() => {
+    LogBox.ignoreAllLogs(true);
+  }, []);
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.cream }}>
       <AccessibilityProvider>

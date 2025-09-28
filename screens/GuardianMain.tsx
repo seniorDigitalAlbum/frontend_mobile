@@ -36,7 +36,6 @@ export default function GuardianMain({ navigation }: Props) {
                 console.log('테스트 모드 - 테스트 시니어 목록 로드');
                 // 테스트 시니어들을 실제 DB ID와 매핑하여 표시
                 const testSeniors = [
-                    { ...TEST_SENIORS[0], id: 999 }, // 김할아버지 -> DB ID: 999
                     { ...TEST_SENIORS[2], id: 123 }    // 테스트 시니어 -> DB ID: 123 (test-user-123의 DB ID)
                 ].map(convertToSeniorInfo);
                 seniors = testSeniors;
@@ -104,15 +103,14 @@ export default function GuardianMain({ navigation }: Props) {
 
     const renderSeniorItem = (senior: SeniorInfo) => {
         const coverPhoto = seniorCoverPhotos[senior.id.toString()];
-        const defaultImage = senior.id === 999 ? 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop' : 
-                           senior.id === 123 ? 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop' :
+        const defaultImage = senior.id === 123 ? 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop' :
                            'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=300&fit=crop';
         
         return (
             <TouchableOpacity
                 key={senior.id}
                 onPress={() => handleSeniorPress(senior)}
-                className="w-[48%] mb-4"
+                className="w-[100%] mb-4"
             >
                 <View
                     className="rounded-3xl shadow-lg overflow-hidden"
@@ -132,21 +130,14 @@ export default function GuardianMain({ navigation }: Props) {
                             className="w-full h-full"
                             resizeMode="cover"
                         />
-                        <View className="absolute top-3 right-3 bg-white bg-opacity-90 rounded-full p-2 shadow-sm">
-                            <Text style={{ fontSize: 14, color: '#EF4444' }}>❤️</Text>
-                        </View>
                         <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent h-8" />
                     </View>
                     
                     {/* 시니어 이름 */}
                     <View className="p-4">
-                        <Text className="text-lg font-bold text-center" style={{ color: colors.darkGreen }}>
+                        <Text className="text-lg font-bold text-center text-black">
                             {senior.name}
                         </Text>
-                        <View className="flex-row items-center justify-center mt-1">
-                            <Text style={{ fontSize: 14, color: colors.green }}>📸</Text>
-                            <Text className="text-xs ml-1" style={{ color: colors.darkGreen }}>앨범 보기</Text>
-                        </View>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -164,7 +155,7 @@ export default function GuardianMain({ navigation }: Props) {
             >
                 <View className="flex-1 px-6 pt-12">
                     {/* 헤더 */}
-                    <View className="mb-8">
+                    <View className="mb-8 mt-4">
                         <Text className="text-3xl font-bold mb-2" style={{ color: colors.darkGreen }}>
                             시니어 앨범
                         </Text>
@@ -189,7 +180,7 @@ export default function GuardianMain({ navigation }: Props) {
                                 {/* 시니어 추가 버튼 */}
                                 <TouchableOpacity
                                     onPress={handleAddSenior}
-                                    className="w-[48%] mb-4"
+                                    className="w-[100%] mb-4"
                                 >
                                     <View
                                         className="rounded-3xl p-6 items-center h-48 justify-center shadow-lg"
@@ -205,8 +196,8 @@ export default function GuardianMain({ navigation }: Props) {
                                         <View className="bg-white rounded-full p-4 mb-3">
                                             <Text style={{ fontSize: 32 }}>➕</Text>
                                         </View>
-                                        <Text className="text-white font-bold text-center text-base">시니어 추가 연결</Text>
-                                        <Text className="text-white/80 text-xs text-center mt-1">새로운 시니어와 연결하세요</Text>
+                                        <Text className="text-white font-bold text-center text-lg">시니어 추가 연결</Text>
+                                        <Text className="text-white/80 text-base text-center mt-1">새로운 시니어와 연결하세요</Text>
                                     </View>
                                 </TouchableOpacity>
                             </View>
@@ -242,24 +233,7 @@ export default function GuardianMain({ navigation }: Props) {
                         </View>
                     )}
 
-                    {/* 도움말 */}
-                    <View 
-                        className="rounded-2xl p-6 mb-6 shadow-sm"
-                        style={{ backgroundColor: colors.beige }}
-                    >
-                        <Text className="text-lg font-semibold mb-4" style={{ color: colors.darkGreen }}>
-                            연결된 시니어 관리
-                        </Text>
-                        <Text className="text-sm mb-3" style={{ color: colors.darkGreen }}>
-                            • 시니어를 탭하면 앨범 목록을 볼 수 있습니다
-                        </Text>
-                        <Text className="text-sm mb-3" style={{ color: colors.darkGreen }}>
-                            • 언제든지 새로운 시니어를 추가할 수 있습니다
-                        </Text>
-                        <Text className="text-sm" style={{ color: colors.darkGreen }}>
-                            • 시니어의 대화 기록과 감정 상태를 모니터링할 수 있습니다
-                        </Text>
-                    </View>
+
                 </View>
             </ScrollView>
         </View>

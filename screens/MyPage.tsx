@@ -10,7 +10,7 @@ import { useUser } from '../contexts/UserContext';
 export default function MyPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const { settings, toggleLargeTextMode, toggleHighContrastMode } = useAccessibility();
+  const { settings, /* toggleLargeTextMode, */ toggleHighContrastMode } = useAccessibility();
   const { logout, user } = useUser();
   const navigation: any = useNavigation();
 
@@ -163,12 +163,11 @@ export default function MyPage() {
         </View>
 
         {/* 접근성 설정 섹션 */}
-        <View className="mb-8">
+        {/* <View className="mb-8">
           <Text className={`text-xl font-bold mb-4 ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
             접근성 설정
           </Text>
           
-          {/* 큰 글씨 모드 토글 */}
           <View className="flex-row items-center justify-between py-4 border-b border-gray-200">
             <View className="flex-1">
               <Text className={`text-lg font-medium ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
@@ -186,8 +185,7 @@ export default function MyPage() {
             />
           </View>
 
-          {/* 고대비 모드 토글 */}
-          {/* <View className="flex-row items-center justify-between py-4 border-b border-gray-200">
+          <View className="flex-row items-center justify-between py-4 border-b border-gray-200">
             <View className="flex-1">
               <Text className={`text-lg font-medium ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
                 야간
@@ -202,20 +200,18 @@ export default function MyPage() {
               trackColor={{ false: '#767577', true: '#81b0ff' }}
               thumbColor={settings.isHighContrastMode ? '#f5dd4b' : '#f4f3f4'}
             />
-          </View> */}
-
-
-        </View>
+          </View>
+        </View> */}
 
         {/* 테스트 화면 버튼 */}
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           onPress={() => navigation.navigate('TestScreen')}
           className={`px-8 py-3 rounded-full mb-4 ${settings.isHighContrastMode ? 'bg-white' : 'bg-blue-500'}`}
         >
           <Text className={`text-lg font-semibold ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>
             🧪 테스트 화면
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* 로그아웃 버튼 */}
         <TouchableOpacity 

@@ -22,8 +22,8 @@ export const TEST_SENIORS: TestSeniorInfo[] = [
     },
     {
         id: 999, // userMockData의 test-user-123과 연결
-        name: '테스트 시니어',
-        kakaoNickname: '테스트 시니어',
+        name: '나림',
+        kakaoNickname: '나림',
         kakaoProfileImage: undefined
     }
 ];

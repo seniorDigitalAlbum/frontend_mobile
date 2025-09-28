@@ -45,6 +45,11 @@ export const commonStyles = StyleSheet.create({
     shadowRadius: 32,
     elevation: 8,
   },
+  whiteToGreenGradient: {
+    // 흰색에서 연한 녹색으로의 원형 그라디언트
+    // 실제 그라디언트는 RadialGradient 컴포넌트로 구현해야 함
+    backgroundColor: '#ffffff', // 기본 배경색 (흰색)
+  },
 });
 
 // 그라데이션 색상 배열 (LinearGradient 컴포넌트용)
@@ -52,6 +57,9 @@ export const gradientColors = ['#fad0c4', '#ffd1ff'];
 
 // 새로운 그라데이션 색상 배열
 export const blueGradientColors = ['#a1c4fd', '#c2e9fb'];
+
+// 흰색에서 연한 녹색으로의 그라디언트 색상 배열
+export const whiteToGreenGradientColors = ['#ffffff', '#bcd9b6'];
 
 // 그라데이션 배경 스타일
 export const gradientBackground = {
@@ -74,7 +82,7 @@ export const rainbowGradientColors = [
 // 색상 상수들
 export const colors = {
   // 그린 계열
-  green: '#628b35',
+  green: '#67876C',
   darkGreen: '#103713',
   
   // 베이지/크림 계열

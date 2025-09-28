@@ -224,18 +224,13 @@ export default function GuardianConnectionTest({ navigation }: Props) {
 
                             {/* 연결 버튼 */}
                             <TouchableOpacity
-                                className={`w-full h-14 rounded-2xl justify-center items-center shadow-lg mb-4 ${
+                                className={`w-full h-14 rounded-2xl justify-center items-center mb-4 ${
                                     selectedSeniors.length === 0 ? 'bg-gray-300' : ''
                                 }`}
                                 onPress={handleTestConnect}
                                 disabled={selectedSeniors.length === 0}
                                 style={{
-                                    backgroundColor: selectedSeniors.length === 0 ? '#D1D5DB' : colors.darkGreen,
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.2,
-                                    shadowRadius: 8,
-                                    elevation: 6,
+                                    backgroundColor: selectedSeniors.length === 0 ? '#D1D5DB' : 'black',
                                 }}
                             >
                                 <Text className={`text-lg font-bold ${
@@ -270,14 +265,13 @@ export default function GuardianConnectionTest({ navigation }: Props) {
 
                     {/* 건너뛰기 버튼 */}
                     <TouchableOpacity
-                        className="w-full h-12 rounded-xl justify-center items-center border-2"
+                        className="w-full h-14 rounded-2xl justify-center items-center"
                         onPress={handleSkip}
-                        style={{ 
-                            borderColor: colors.green,
-                            backgroundColor: colors.beige 
+                        style={{
+                            backgroundColor: '#D1D5DB'
                         }}
                     >
-                        <Text className="text-base font-medium" style={{ color: colors.darkGreen }}>
+                        <Text className="text-lg font-bold text-gray-500">
                             나중에 할게요
                         </Text>
                     </TouchableOpacity>

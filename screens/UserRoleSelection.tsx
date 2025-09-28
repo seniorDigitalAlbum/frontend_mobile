@@ -29,8 +29,9 @@ export default function UserRoleSelection({ route, navigation }: Props) {
                     <Text className="text-4xl font-bold text-center mb-4" style={{ color: colors.darkGreen }}>
                         환영합니다!
                     </Text>
+                    {/* {getUserDisplayName()} */}
                     <Text className="text-lg text-center leading-6" style={{ color: colors.darkGreen }}>
-                        {getUserDisplayName()}님,{'\n'}사용자 유형을 선택해주세요.
+                        나림님,{'\n'}사용자 유형을 선택해주세요.
                     </Text>
                 </View>
 
@@ -44,18 +45,13 @@ export default function UserRoleSelection({ route, navigation }: Props) {
 
                 {/* 완료 버튼 */}
                 <TouchableOpacity
-                    className={`w-full h-14 rounded-2xl justify-center items-center shadow-lg ${
+                    className={`w-full h-14 rounded-2xl justify-center items-center shadow-sm ${
                         !selectedUserType ? 'bg-gray-300' : ''
                     }`}
                     onPress={handleComplete}
                     disabled={!selectedUserType}
                     style={{
-                        backgroundColor: !selectedUserType ? '#D1D5DB' : colors.darkGreen,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 8,
-                        elevation: 6,
+                        backgroundColor: !selectedUserType ? '#D1D5DB' : 'black',   
                     }}
                 >
                     <Text className={`text-lg font-bold ${

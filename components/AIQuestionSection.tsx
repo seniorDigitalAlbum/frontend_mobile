@@ -6,16 +6,17 @@ import AICharacter from './AICharacter';
 interface AIQuestionSectionProps {
   questionText: string;
   onQuestionComplete?: () => void;
+  isAIResponse?: boolean; // AI 응답인지 구분
 }
 
-export default function AIQuestionSection({ questionText, onQuestionComplete }: AIQuestionSectionProps) {
+export default function AIQuestionSection({ questionText, onQuestionComplete, isAIResponse = false }: AIQuestionSectionProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
 
-  // 컴포넌트 마운트 시 자동으로 TTS 재생
+  // 컴포넌트 마운트 시 자동으로 TTS 재생 (AI 응답이 아닐 때만)
   useEffect(() => {
     const playQuestion = async () => {
-      if (!hasPlayed && questionText && questionText.trim()) {
+      if (!hasPlayed && questionText && questionText.trim() && !isAIResponse) {
         try {
           setIsPlaying(true);
           const ttsResult = await ttsService.synthesizeText(questionText);
@@ -36,6 +37,10 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
         // 텍스트가 없어도 질문 완료로 처리
         setHasPlayed(true);
         onQuestionComplete?.();
+      } else if (isAIResponse) {
+        // AI 응답일 때는 TTS 재생 없이 바로 완료 처리
+        setHasPlayed(true);
+        onQuestionComplete?.();
       }
     };
 
@@ -44,7 +49,7 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
     return () => {
       ttsService.stopAudio();
     };
-  }, [questionText, hasPlayed]);
+  }, [questionText, hasPlayed, isAIResponse]);
 
   // tts 수동 재생
   const handlePlayQuestion = async () => {
@@ -76,41 +81,36 @@ export default function AIQuestionSection({ questionText, onQuestionComplete }: 
   };
 
   return (
-    <View className="flex-1 justify-center items-center mb-8">
-      {/* AI 캐릭터 */}
-      <TouchableOpacity 
-        onPress={handlePlayQuestion}
-        className="w-32 h-32 bg-blue-100 rounded-full justify-center items-center mb-6"
-        activeOpacity={0.7}
-      >
-        <AICharacter />
-        {/* 재생/정지 표시 */}
-        <View className="absolute bottom-2 right-2">
-          <Text className="text-lg">
-            {/* {isPlaying ? '다시 재생' : '재생 중입니다..'} */}
+    <View className="absolute top-20 left-0 right-0 z-10 px-6">
+      {/* AI 캐릭터와 말풍선을 화면 위쪽에 고정 */}
+      <View className="items-center">
+        {/* AI 캐릭터 */}
+        <TouchableOpacity 
+          onPress={handlePlayQuestion}
+          className="w-32 h-32 justify-center items-center mb-6"
+          activeOpacity={0.7}
+        >
+          <AICharacter />
+          {/* 재생/정지 표시 */}
+          <View className="absolute bottom-2 right-2">
+            <Text className="text-lg">
+              {/* {isPlaying ? '다시 재생' : '재생 중입니다..'} */}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        
+        {/* 말풍선 */}
+        <View className="bg-gray-100 rounded-2xl p-4 mx-4 relative">
+          {/* 말풍선 꼬리 */}
+          <View className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+            <View className="w-4 h-4 bg-gray-100 rotate-45"></View>
+          </View>
+          <Text className="text-2xl text-center text-gray-800 leading-8">
+            {questionText}
           </Text>
         </View>
-      </TouchableOpacity>
-      
-      {/* 말풍선 */}
-      <View className="bg-gray-100 rounded-2xl p-4 mx-4 mb-4 relative">
-        {/* 말풍선 꼬리 */}
-        <View className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-          <View className="w-4 h-4 bg-gray-100 rotate-45"></View>
-        </View>
-        <Text className="text-lg text-center text-gray-800 leading-6">
-          {questionText}
-        </Text>
       </View>
 
-      {/* TTS 재생 상태 표시 */}
-      {isPlaying && (
-        <View className="bg-blue-100 px-4 py-2 rounded-full">
-          <Text className="text-blue-600 font-medium text-center">
-            🔊 AI가 질문을 읽고 있습니다...
-          </Text>
-        </View>
-      )}
     </View>
   );
 }

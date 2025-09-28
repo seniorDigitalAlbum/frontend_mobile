@@ -37,7 +37,6 @@ export default function DiaryResult({ route }: Props) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [diaryData, setDiaryData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [currentMusicIndex, setCurrentMusicIndex] = useState(0);
 
     // 감정을 자연스러운 문장으로 매핑하는 함수
     const getEmotionDescription = (emotion: string) => {
@@ -132,15 +131,11 @@ export default function DiaryResult({ route }: Props) {
     const getEmotionImage = (emotion: string) => {
         const emotionMap: Record<string, any> = {
             '기쁨': require('../assets/happy.png'),
-            '슬픔': require('../assets/sad.jpg'),
+            '슬픔': require('../assets/sad.png'),
             '분노': require('../assets/angry.png'),
-            '두려움': require('../assets/fear.png'),
-            '놀람': require('../assets/surprised.png'),
-            '행복': require('../assets/happy.png'),
-            '화남': require('../assets/angry.png'),
             '불안': require('../assets/fear.png'),
             '당황': require('../assets/surprised.png'),
-            '상처': require('../assets/hurt.jpg')
+            '상처': require('../assets/hurt.png')
         };
         return emotionMap[emotion] || require('../assets/happy.png');
     };
@@ -154,12 +149,58 @@ export default function DiaryResult({ route }: Props) {
             '불안': '#F3E5F5', // 밝은 보라색
             '당황': '#E8F5E8', // 밝은 초록색
             '상처': '#FFF3E0', // 밝은 주황색
-            '행복': '#FFF8E1', // 기쁨과 동일
-            '화남': '#FFEBEE', // 분노와 동일
-            '두려움': '#F3E5F5', // 불안과 동일
-            '놀람': '#E8F5E8' // 당황과 동일
         };
         return colorMap[emotion] || '#FFF8E1'; // 기본값
+    };
+
+    // 제목과 내용을 분리하는 함수
+    const separateTitleAndContent = (diaryContent: string) => {
+        if (!diaryContent) {
+            return {
+                title: '특별한 하루',
+                content: '일기가 아직 생성되지 않았습니다.'
+            };
+        }
+
+        const lines = diaryContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        
+        // "제목:" 패턴 찾기
+        const titleIndex = lines.findIndex(line => line.startsWith('제목:'));
+        
+        if (titleIndex !== -1) {
+            // 제목이 있는 경우
+            const title = lines[titleIndex].replace(/^제목:\s*/, '').trim();
+            const contentLines = lines.slice(titleIndex + 1);
+            return {
+                title: title || '특별한 하루',
+                content: contentLines.join(' ').trim() || '일기가 아직 생성되지 않았습니다.'
+            };
+        } else {
+            // 제목이 없는 경우 - 첫 번째 줄을 제목으로, 나머지를 내용으로
+            if (lines.length > 1) {
+                const firstLine = lines[0];
+                const title = firstLine.length > 10 ? firstLine.substring(0, 10) + '...' : firstLine;
+                const content = lines.slice(1).join(' ').trim();
+                return {
+                    title: title,
+                    content: content || '일기가 아직 생성되지 않았습니다.'
+                };
+            } else {
+                // 한 줄만 있는 경우
+                const singleLine = lines[0];
+                if (singleLine.length > 10) {
+                    return {
+                        title: singleLine.substring(0, 10) + '...',
+                        content: singleLine.substring(10).trim() || '일기가 아직 생성되지 않았습니다.'
+                    };
+                } else {
+                    return {
+                        title: singleLine,
+                        content: '일기가 아직 생성되지 않았습니다.'
+                    };
+                }
+            }
+        }
     };
 
     const handleSaveDiary = async () => {
@@ -220,7 +261,7 @@ export default function DiaryResult({ route }: Props) {
     if (loading) {
         return (
             <SafeAreaView className={`flex-1 justify-center items-center ${settings.isHighContrastMode ? 'bg-black' : 'bg-white'}`}>
-                <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-500'}`}>
+                <Text className={`${settings.isLargeTextMode ? 'text-2xl' : 'text-xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-500'}`}>
                     일기를 불러오는 중...
                 </Text>
             </SafeAreaView>
@@ -254,19 +295,11 @@ export default function DiaryResult({ route }: Props) {
                             resizeMode="contain"
                         />
                     </View>
-                    {/* 음악 재생 상태 표시 */}
-                    {isPlaying && displayData.musicRecommendations.length > 0 && (
-                        <View className={`bg-green-100 rounded-full mb-2 ${settings.isLargeTextMode ? 'px-6 py-3' : 'px-4 py-2'}`}>
-                            <Text className={`text-green-600 font-medium ${settings.isLargeTextMode ? 'text-base' : 'text-sm'}`}>
-                                🎵 {displayData.musicRecommendations[currentMusicIndex].title} - {displayData.musicRecommendations[currentMusicIndex].artist}
-                            </Text>
-                        </View>
-                    )}
                 </View>
 
                 {/* 제목 */}
                 <View className={`items-center ${settings.isLargeTextMode ? 'mb-8' : 'mb-6'}`}>
-                    <Text className={`font-bold ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+                    <Text className={`font-bold ${settings.isLargeTextMode ? 'text-4xl' : 'text-3xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
                         이 대화를 할 때 {getEmotionDescription(displayData.emotionSummary?.dominantEmotion || finalEmotion)} 보였어요.
                     </Text>
                 </View>
@@ -274,15 +307,23 @@ export default function DiaryResult({ route }: Props) {
                 {/* 일기 내용 */}
                 <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
                     <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
-                        {/* 일기 제목 표시 */}
-                        {displayData.title && (
-                            <Text className={`font-bold mb-4 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                                {displayData.title}
-                            </Text>
-                        )}
-                        <Text className={`leading-7 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-700'}`}>
-                            {displayData.diary || diary}
-                        </Text>
+                        {(() => {
+                            const diaryContent = displayData.diary || diary;
+                            const { title, content } = separateTitleAndContent(diaryContent);
+                            
+                            return (
+                                <>
+                                    {/* 일기 제목 표시 */}
+                                    <Text className={`font-bold mb-4 ${settings.isLargeTextMode ? 'text-2xl' : 'text-xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+                                        {title}
+                                    </Text>
+                                    {/* 일기 내용 표시 */}
+                                    <Text className={`leading-8 ${settings.isLargeTextMode ? 'text-2xl' : 'text-xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-700'}`}>
+                                        {content}
+                                    </Text>
+                                </>
+                            );
+                        })()}
                     </View>
                 </View>
 
@@ -290,26 +331,19 @@ export default function DiaryResult({ route }: Props) {
                 {displayData.musicRecommendations.length > 0 && (
                     <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
                         <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
-                            <Text className={`font-semibold mb-4 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+                            <Text className={`font-semibold mb-4 ${settings.isLargeTextMode ? 'text-2xl' : 'text-xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
                                 🎵 추천 음악
                             </Text>
                             <WebView
                                 style={{ height: 200, width: '100%' }}
                                 source={{ 
-                                    uri: getYouTubeEmbedUrl(
-                                        displayData.musicRecommendations[currentMusicIndex]?.youtubeVideoId || 
-                                        extractYouTubeId(displayData.musicRecommendations[currentMusicIndex]?.youtubeLink || '') || 
-                                        'dQw4w9WgXcQ'
-                                    )
+                                    uri: getYouTubeEmbedUrl('bKSGV2VPmIs')
                                 }}
                                 allowsInlineMediaPlayback={true}
                                 mediaPlaybackRequiresUserAction={false}
                                 onError={(error) => console.error('YouTube 플레이어 오류:', error)}
                                 onLoad={() => console.log('YouTube 플레이어 로드 완료')}
                             />
-                            <Text className={`mt-2 text-center ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-600'}`}>
-                                {displayData.musicRecommendations[currentMusicIndex]?.title} - {displayData.musicRecommendations[currentMusicIndex]?.artist}
-                            </Text>
                         </View>
                     </View>
                 )}
@@ -333,7 +367,7 @@ export default function DiaryResult({ route }: Props) {
                             }
                         ]}
                     >
-                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} text-gray-800`}>
+                        <Text className={`font-semibold ${settings.isLargeTextMode ? 'text-2xl' : 'text-xl'} text-gray-800`}>
                             처음 화면으로 돌아가기
                         </Text>
                     </TouchableOpacity>

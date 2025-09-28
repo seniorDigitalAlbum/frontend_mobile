@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Animated, Alert, Platform } from 'react-n
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import microphoneApiService from '../services/api/microphoneApiService';
+import { colors } from '../styles/commonStyles';
 
 interface AnswerMicProps {
     questionId: string;
@@ -220,6 +221,11 @@ export default function AnswerMic({
             setAudioLevel(0);
             audioLevelAnimation.setValue(0);
             
+            // 즉시 처리 상태 시작 - "다음말을 생성하고 있어요..." 표시
+            if (onAIResponse) {
+                onAIResponse('', '', 0); // 빈 값으로 즉시 처리 상태 시작
+            }
+            
             if (durationRef.current) {
                 clearInterval(durationRef.current);
                 durationRef.current = null;
@@ -253,7 +259,7 @@ export default function AnswerMic({
                     });
                     console.log('발화 종료됨:', speechEndResponse);
                     
-                    // AI 응답을 부모 컴포넌트로 전달
+                    // AI 응답을 부모 컴포넌트로 전달 (실제 처리)
                     if (speechEndResponse && speechEndResponse.status === 'success' && onAIResponse) {
                         onAIResponse(speechEndResponse.userText, '', speechEndResponse.conversationMessageId);
                     }
@@ -290,31 +296,43 @@ export default function AnswerMic({
 
     return (
         <View className="items-center">
-            <TouchableOpacity 
-                onPress={handlePress}
-                className={`w-20 h-20 rounded-full justify-center items-center ${
-                    isRecording ? 'bg-red-100' : 'bg-blue-100'
-                }`}
-                activeOpacity={0.7}
-            >
-                <Ionicons 
-                    name={isRecording ? "stop" : "mic"} 
-                    size={32} 
-                    color={isRecording ? "#EF4444" : "#3B82F6"} 
-                />
+            {/* 녹음 상태 표시 - 마이크 위에 */}
+            {isRecording && (
+                <View className="mb-4 px-4 py-2 rounded-full" style={{ backgroundColor: '#E8F5E8' }}>
+                    <Text className="font-medium text-2xl" style={{ color: colors.green }}>듣고 있어요.</Text>
+                </View>
+            )}
+            
+            {/* 마이크 버튼 */}
+            <View className="w-40 h-40 justify-center items-center mb-4">
+                <TouchableOpacity 
+                    onPress={handlePress}
+                    className={`w-36 h-36 rounded-full justify-center items-center ${
+                        isRecording ? '' : 'bg-green-100'
+                    }`}
+                    style={isRecording ? { backgroundColor: colors.green } : undefined}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons 
+                        name={isRecording ? "stop" : "mic"} 
+                        size={64} 
+                        color={isRecording ? "#FFFFFF" : colors.green} 
+                    />
+                </TouchableOpacity>
                 
                 {/* 실시간 오디오 레벨 표시 */}
-                {isRecording && (
-                    <View className="absolute -bottom-6 left-0 right-0 items-center">
-                        <View className="flex-row items-end space-x-1 h-6">
-                            {[...Array(4)].map((_, index) => (
+                {/* {isRecording && (
+                    <View className="absolute -bottom-12 left-0 right-0 items-center">
+                        <View className="flex-row items-end space-x-2 h-12">
+                            {[...Array(5)].map((_, index) => (
                                 <Animated.View
                                     key={index}
-                                    className="w-1 bg-red-500 rounded-full"
+                                    className="w-2 rounded-full"
                                     style={{
+                                        backgroundColor: colors.green,
                                         height: audioLevelAnimation.interpolate({
                                             inputRange: [0, 1],
-                                            outputRange: [2, 16],
+                                            outputRange: [8, 32],
                                         }),
                                         opacity: audioLevelAnimation.interpolate({
                                             inputRange: [0, 1],
@@ -325,8 +343,8 @@ export default function AnswerMic({
                             ))}
                         </View>
                     </View>
-                )}
-            </TouchableOpacity>
+                )} */}
+            </View>
             
             {/* 녹음 상태 텍스트 */}
             {/* <Text className={`text-sm font-medium mt-2 ${

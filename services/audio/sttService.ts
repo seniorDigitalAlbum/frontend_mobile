@@ -122,6 +122,19 @@ class STTService {
       // STT API 호출
       const result = await sttApiService.transcribeRealtime(audioData);
       
+      // "시청해 주셔서 감사합니다"는 사용자가 말을 안한 것으로 처리
+      if (result && result.text && result.text.includes('시청해 주셔서 감사합니다')) {
+        console.log('STT 결과에서 "시청해 주셔서 감사합니다" 감지 - 인식 실패로 처리');
+        return {
+          text: '',
+          language: 'ko',
+          confidence: 0,
+          duration: result.duration || 0,
+          status: 'error',
+          error: '사용자가 말을 하지 않았습니다'
+        };
+      }
+      
       // 녹음 객체 정리
       this.recording = null;
       
@@ -172,6 +185,19 @@ class STTService {
       const result = await sttApiService.transcribeAudio(base64Data);
       console.log('STT 변환 결과:', result);
       
+      // "시청해 주셔서 감사합니다"는 사용자가 말을 안한 것으로 처리
+      if (result && result.text && result.text.includes('시청해 주셔서 감사합니다')) {
+        console.log('STT 결과에서 "시청해 주셔서 감사합니다" 감지 - 인식 실패로 처리');
+        return {
+          text: '',
+          language: 'ko',
+          confidence: 0,
+          duration: result.duration || 0,
+          status: 'error',
+          error: '사용자가 말을 하지 않았습니다'
+        };
+      }
+      
       return result;
     } catch (error) {
       console.error('STT 변환 실패:', error);
@@ -203,6 +229,19 @@ class STTService {
       // STT API 호출
       const result = await sttApiService.transcribeRealtime(audioData);
       console.log('STT 변환 결과:', result);
+      
+      // "시청해 주셔서 감사합니다"는 사용자가 말을 안한 것으로 처리
+      if (result && result.text && result.text.includes('시청해 주셔서 감사합니다')) {
+        console.log('STT 결과에서 "시청해 주셔서 감사합니다" 감지 - 인식 실패로 처리');
+        return {
+          text: '',
+          language: 'ko',
+          confidence: 0,
+          duration: result.duration || 0,
+          status: 'error',
+          error: '사용자가 말을 하지 않았습니다'
+        };
+      }
       
       return result;
     } catch (error) {

@@ -8,6 +8,7 @@ import { useAccessibility } from '../contexts/AccessibilityContext';
 import { useUser } from '../contexts/UserContext';
 import { API_BASE_URL } from '../config/api';
 import conversationApiService from '../services/api/conversationApiService';
+import { colors } from '../styles/commonStyles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -110,8 +111,8 @@ export default function Chat({ route, navigation }: Props) {
                         {/* AI 메시지 */}
                         {message.senderType === 'AI' && (
                             <View className="flex-row items-end space-x-2">
-                                <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} bg-blue-100 rounded-full justify-center items-center`}>
-                                    <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color="#3B82F6" />
+                                <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} rounded-full justify-center items-center`} style={{ backgroundColor: '#E8F5E8' }}>
+                                    <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color={colors.green} />
                                 </View>
                                 <View className={`max-w-[80%] rounded-2xl rounded-bl-md shadow-sm ${settings.isLargeTextMode ? 'p-4' : 'p-3'} ${settings.isHighContrastMode ? 'bg-black border border-white' : 'bg-white'}`}>
                                     <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>{message.content}</Text>
@@ -125,14 +126,14 @@ export default function Chat({ route, navigation }: Props) {
                         {/* 사용자 메시지 */}
                         {message.senderType === 'USER' && (
                             <View className="flex-row items-end space-x-2 justify-end">
-                                <View className={`max-w-[80%] rounded-2xl rounded-br-md ${settings.isLargeTextMode ? 'p-4' : 'p-3'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-purple-500'}`}>
+                                <View className={`max-w-[80%] rounded-2xl rounded-br-md ${settings.isLargeTextMode ? 'p-4' : 'p-3'} ${settings.isHighContrastMode ? 'bg-white' : ''}`} style={settings.isHighContrastMode ? {} : { backgroundColor: colors.green }}>
                                     <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-black' : 'text-white'}`}>{message.content}</Text>
-                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-600' : 'text-purple-100'}`}>
+                                    <Text className={`${settings.isLargeTextMode ? 'text-sm' : 'text-xs'} mt-1 ${settings.isHighContrastMode ? 'text-gray-600' : 'text-white'}`}>
                                         {new Date(message.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                                     </Text>
                                 </View>
-                                <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} bg-purple-100 rounded-full justify-center items-center`}>
-                                    <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color="#8B5CF6" />
+                                <View className={`${settings.isLargeTextMode ? 'w-10 h-10' : 'w-8 h-8'} rounded-full justify-center items-center`} style={{ backgroundColor: '#E8F5E8' }}>
+                                    <Ionicons name="person" size={settings.isLargeTextMode ? 24 : 20} color={colors.green} />
                                 </View>
                             </View>
                         )}
@@ -144,7 +145,7 @@ export default function Chat({ route, navigation }: Props) {
             <View className={`${settings.isHighContrastMode ? 'bg-black border-white' : 'bg-white border-gray-200'} ${settings.isLargeTextMode ? 'p-8' : 'p-6'} border-t`}>
                 <TouchableOpacity
                     onPress={handleGenerateDiary}
-                    className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-purple-500'}`}
+                    className={`w-full rounded-2xl items-center shadow-lg ${settings.isLargeTextMode ? 'py-6' : 'py-4'} ${settings.isHighContrastMode ? 'bg-white' : 'bg-black'}`}
                     activeOpacity={0.8}
                     disabled={isGenerating}
                     style={settings.isHighContrastMode ? { borderWidth: 2, borderColor: '#ffffff' } : {}}

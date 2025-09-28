@@ -1,181 +1,127 @@
-/**
- * 대화 플로우 관련 유틸리티 함수들
- * 
- * 이 파일은 대화 세션, 상태 관리, 에러 처리 등
- * 대화 관련 공통 유틸리티 함수들을 제공합니다.
- */
-
 import { Alert } from 'react-native';
-import { ERROR_MESSAGES, FLOW_MESSAGES } from '../constants/conversation';
 
-/**
- * 에러 메시지를 표시하는 유틸리티 함수
- * @param error - 에러 객체 또는 메시지
- * @param customMessage - 커스텀 에러 메시지 (선택사항)
- */
-export const showErrorAlert = (error: any, customMessage?: string): void => {
-  const message = customMessage || error?.message || ERROR_MESSAGES.ERROR;
-  console.error('Error:', error);
-  Alert.alert('오류', message);
-};
+export interface ConversationParams {
+    questionText?: string;
+    questionId?: string;
+    conversationId?: number;
+    cameraSessionId?: string;
+    microphoneSessionId?: string;
+}
 
-/**
- * 성공 메시지를 표시하는 유틸리티 함수
- * @param message - 성공 메시지
- * @param onPress - 확인 버튼 클릭 시 실행할 함수 (선택사항)
- */
-export const showSuccessAlert = (message: string, onPress?: () => void): void => {
-  Alert.alert('성공', message, [
-    { text: '확인', onPress: onPress || (() => {}) }
-  ]);
-};
+export interface EmotionCapture {
+    timestamp: string;
+    emotion: string;
+    confidence: number;
+}
 
-/**
- * 확인 다이얼로그를 표시하는 유틸리티 함수
- * @param title - 다이얼로그 제목
- * @param message - 다이얼로그 메시지
- * @param onConfirm - 확인 버튼 클릭 시 실행할 함수
- * @param onCancel - 취소 버튼 클릭 시 실행할 함수 (선택사항)
- */
-export const showConfirmDialog = (
-  title: string,
-  message: string,
-  onConfirm: () => void,
-  onCancel?: () => void
-): void => {
-  Alert.alert(title, message, [
-    { text: '취소', onPress: onCancel || (() => {}), style: 'cancel' },
-    { text: '확인', onPress: onConfirm, style: 'default' }
-  ]);
-};
+export class ConversationUtils {
+    /**
+     * 라우트 파라미터에서 안전한 질문 텍스트 추출
+     */
+    static getSafeQuestionText(questionText?: string): string {
+        return questionText || '안녕하세요, 오늘 하루는 어떠셨나요?';
+    }
 
-/**
- * 플로우 단계에 따른 메시지를 반환하는 함수
- * @param step - 현재 플로우 단계
- * @returns 해당 단계의 메시지
- */
-export const getFlowStepMessage = (step: string): string => {
-  switch (step) {
-    case 'permissions':
-      return FLOW_MESSAGES.PERMISSIONS_REQUEST;
-    case 'camera_test':
-      return FLOW_MESSAGES.CAMERA_TEST;
-    case 'mic_test':
-      return FLOW_MESSAGES.MICROPHONE_TEST;
-    case 'tts_playback':
-      return FLOW_MESSAGES.TTS_PLAYBACK;
-    case 'session_create':
-      return FLOW_MESSAGES.SESSION_CREATE;
-    case 'user_response':
-      return FLOW_MESSAGES.USER_RESPONSE;
-    case 'session_cleanup':
-      return FLOW_MESSAGES.SESSION_CLEANUP;
-    case 'complete':
-      return FLOW_MESSAGES.COMPLETE;
-    default:
-      return FLOW_MESSAGES.INITIALIZING;
-  }
-};
+    /**
+     * 사용자 ID 추출 (기본값: "1")
+     */
+    static getUserId(userId?: string): string {
+        return userId || "1";
+    }
 
-/**
- * 세션 ID 유효성을 검증하는 함수
- * @param sessionIds - 검증할 세션 ID 객체
- * @returns 유효성 검증 결과
- */
-export const validateSessionIds = (sessionIds: { cameraSessionId: string | null; microphoneSessionId: string | null }): boolean => {
-  return !!(sessionIds.cameraSessionId && sessionIds.microphoneSessionId);
-};
+    /**
+     * STT 결과 유효성 검사
+     */
+    static isValidSTTResult(userText: string | null): boolean {
+        return !!(userText && userText.trim() !== '');
+    }
 
-/**
- * 대화 정보 유효성을 검증하는 함수
- * @param conversationInfo - 검증할 대화 정보
- * @returns 유효성 검증 결과
- */
-export const validateConversationInfo = (conversationInfo: {
-  questionText: string;
-  questionId: number;
-  conversationId: string;
-  userId: string;
-}): boolean => {
-  return !!(
-    conversationInfo.questionText &&
-    conversationInfo.questionId &&
-    conversationInfo.conversationId &&
-    conversationInfo.userId
-  );
-};
+    /**
+     * 감정 분석 결과에서 최종 감정 추출
+     */
+    static getFinalEmotion(emotionCaptures: EmotionCapture[]): {
+        emotion: string;
+        confidence: number;
+    } {
+        if (emotionCaptures.length === 0) {
+            return { emotion: 'neutral', confidence: 0 };
+        }
 
-/**
- * 권한 상태를 확인하는 함수
- * @param permissions - 확인할 권한 상태
- * @returns 모든 권한이 허용되었는지 여부
- */
-export const arePermissionsGranted = (permissions: { camera: boolean | null; microphone: boolean | null }): boolean => {
-  return permissions.camera === true && permissions.microphone === true;
-};
+        const emotionCounts = emotionCaptures.reduce((acc, capture) => {
+            acc[capture.emotion] = (acc[capture.emotion] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>);
 
-/**
- * 테스트 결과를 확인하는 함수
- * @param testResults - 확인할 테스트 결과
- * @returns 모든 테스트가 성공했는지 여부
- */
-export const areTestsPassed = (testResults: { cameraTest: string; microphoneTest: string }): boolean => {
-  return testResults.cameraTest === 'success' && testResults.microphoneTest === 'success';
-};
+        const finalEmotion = Object.keys(emotionCounts).reduce((a, b) => 
+            emotionCounts[a] > emotionCounts[b] ? a : b
+        );
+        
+        const finalEmotionCaptures = emotionCaptures.filter(capture => capture.emotion === finalEmotion);
+        const averageConfidence = finalEmotionCaptures.reduce((sum, capture) => sum + capture.confidence, 0) / finalEmotionCaptures.length;
 
-/**
- * 현재 시간을 타임스탬프로 반환하는 함수
- * @returns 현재 시간의 타임스탬프
- */
-export const getCurrentTimestamp = (): number => {
-  return Date.now();
-};
+        return { emotion: finalEmotion, confidence: averageConfidence };
+    }
 
-/**
- * 지연 시간을 생성하는 Promise 함수
- * @param ms - 지연할 시간 (밀리초)
- * @returns Promise
- */
-export const delay = (ms: number): Promise<void> => {
-  return new Promise(resolve => setTimeout(resolve, ms));
-};
+    /**
+     * 에러 알림 표시
+     */
+    static showErrorAlert(message: string): void {
+        Alert.alert('오류', message);
+    }
 
-/**
- * 에러 객체에서 메시지를 추출하는 함수
- * @param error - 에러 객체
- * @returns 에러 메시지
- */
-export const extractErrorMessage = (error: any): string => {
-  if (typeof error === 'string') {
-    return error;
-  }
-  if (error?.message) {
-    return error.message;
-  }
-  if (error?.error) {
-    return error.error;
-  }
-  return ERROR_MESSAGES.ERROR;
-};
+    /**
+     * 성공 알림 표시
+     */
+    static showSuccessAlert(message: string): void {
+        Alert.alert('성공', message);
+    }
 
-/**
- * 로그 메시지를 포맷팅하는 함수
- * @param step - 플로우 단계
- * @param message - 로그 메시지
- * @returns 포맷팅된 로그 메시지
- */
-export const formatLogMessage = (step: string, message: string): string => {
-  const timestamp = new Date().toISOString();
-  return `[${timestamp}] ${step}: ${message}`;
-};
+    /**
+     * 녹음 시간 포맷팅
+     */
+    static formatTime(seconds: number): string {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
 
-/**
- * 세션 ID를 마스킹하는 함수 (로그용)
- * @param sessionId - 마스킹할 세션 ID
- * @returns 마스킹된 세션 ID
- */
-export const maskSessionId = (sessionId: string | null): string => {
-  if (!sessionId) return 'null';
-  if (sessionId.length <= 8) return sessionId;
-  return `${sessionId.substring(0, 4)}...${sessionId.substring(sessionId.length - 4)}`;
-};
+    /**
+     * 대화 상태 메시지 생성
+     */
+    static getStatusMessage(isQuestionComplete: boolean, isProcessingResponse: boolean): string | null {
+        if (!isQuestionComplete) {
+            return "말하는 중이에요";
+        }
+        if (isProcessingResponse) {
+            return "다음 말을 생각하고 있어요...";
+        }
+        return null;
+    }
+
+    /**
+     * 녹음 상태 메시지 생성
+     */
+    static getRecordingMessage(isRecording: boolean): string | null {
+        return isRecording ? "듣고 있어요." : null;
+    }
+
+    /**
+     * 대화 세션 종료 확인
+     */
+    static shouldEndConversation(endResponse: any): boolean {
+        return endResponse && endResponse.status === 'COMPLETED';
+    }
+
+    /**
+     * 일기 결과 네비게이션 파라미터 생성
+     */
+    static createDiaryNavigationParams(diaryResponse: any, conversationId: number) {
+        return {
+            diary: diaryResponse.diary,
+            conversationId: diaryResponse.conversationId,
+            finalEmotion: '기쁨', // 기본값으로 설정 (백엔드에서 emotionSummary 제거됨)
+            userId: "1",
+            musicRecommendations: diaryResponse.musicRecommendations
+        };
+    }
+}

@@ -51,6 +51,12 @@
       "eas": {
         "projectId": "da97123f-a817-46bf-8269-59e2558de071"
       }
+    },
+    "developer": {
+      "tool": "expo-cli"
+    },
+    "packagerOpts": {
+      "dev": true
     }
   }
 }

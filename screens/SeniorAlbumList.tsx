@@ -213,7 +213,7 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
                             {seniorName}님의 앨범
                         </Text>
                         <Text className="text-lg" style={{ color: colors.darkGreen }}>
-                            {albums.length}개의 앨범이 있습니다
+                            {albums.length}개의 일기가 있습니다
                         </Text>
                     </View>
 
@@ -227,33 +227,12 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
                             {albums.map(renderAlbumItem)}
                         </View>
                     ) : (
-                        <View className="items-center py-16">
-                            <View
-                                className="rounded-2xl p-8 mb-6 shadow-sm"
-                                style={{
-                                    backgroundColor: colors.beige,
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 2 },
-                                    shadowOpacity: 0.1,
-                                    shadowRadius: 8,
-                                    elevation: 4,
-                                }}
-                            >
-                                <Text className="text-center text-xl font-bold mb-3" style={{ color: colors.darkGreen }}>
-                                    🔒 공개된 앨범이 없습니다
-                                </Text>
-                                <Text className="text-center text-base mb-2" style={{ color: colors.darkGreen }}>
-                                    {seniorName}님이 아직 앨범을 공개하지 않았습니다.
-                                </Text>
-                                <Text className="text-center text-sm" style={{ color: colors.darkGreen }}>
-                                    시니어가 앨범을 공개하면 여기에서 볼 수 있습니다.
-                                </Text>
-                            </View>
-                            <Text className="text-center text-lg mb-4" style={{ color: colors.darkGreen }}>
-                                아직 공개된 앨범이 없습니다.
+                        <View className="items-center py-16 mt-40">
+                            <Text className="text-center text-3xl mb-4" style={{ color: 'black' }}>
+                                공개된 일기가 없습니다.
                             </Text>
-                            <Text className="text-sm text-center" style={{ color: colors.darkGreen }}>
-                                시니어가 대화를 완료하고 앨범을 공개하면 여기에서 볼 수 있습니다.
+                            <Text className="text-sm text-center">
+                                시니어가 대화를 완료하고{'\n'} 공개하면 여기에서 볼 수 있습니다.
                             </Text>
                         </View>
                     )}

@@ -7,8 +7,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import conversationApiService, { Conversation as ConversationType } from '../services/api/conversationApiService';
 import albumApiService from '../services/api/albumApiService';
-import { useAccessibility } from '../contexts/AccessibilityContext';
+import { MockService, shouldUseMock } from '../services/mockService';
 import { useUser } from '../contexts/UserContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors } from '../styles/commonStyles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -34,7 +36,6 @@ const generateMockDiaries = () => {
 
 export default function Album() {
     const { state, setDiaries, getDiaryById } = useDiary();
-    const { settings } = useAccessibility();
     const [refreshing, setRefreshing] = useState(false);
     const [albums, setAlbums] = useState<ConversationType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -43,6 +44,19 @@ export default function Album() {
 
     const { user } = useUser();
     const userId = user?.userId || "1"; // UserContext에서 가져온 실제 사용자 ID
+
+    // 감정에 따른 이미지 매핑
+    const getEmotionImage = (emotion: string) => {
+        const emotionMap: Record<string, any> = {
+            '기쁨': require('../assets/happy.png'),
+            '슬픔': require('../assets/sad.png'),
+            '분노': require('../assets/angry.png'),
+            '불안': require('../assets/fear.png'),
+            '당황': require('../assets/surprised.png'),
+            '상처': require('../assets/hurt.png')
+        };
+        return emotionMap[emotion] || require('../assets/happy.png');
+    };
 
     // 초기 데이터 로드 - 실제 API 호출
     useEffect(() => {
@@ -80,36 +94,59 @@ export default function Album() {
                 const albumPhotos = await albumApiService.getPhotos(conversation.id);
                 const coverPhoto = albumPhotos.find(photo => photo.isCover);
                 
-                // 제목 추출 함수
-                const extractTitleFromDiary = (diaryContent: string, dominantEmotion: string) => {
-                    if (diaryContent) {
-                        // 1. "제목:" 패턴에서 추출
-                        const titleMatch = diaryContent.match(/제목:\s*(.+?)(?:\n|$)/);
-                        if (titleMatch && titleMatch[1]) {
-                            const extractedTitle = titleMatch[1].trim();
-                            if (extractedTitle.length > 0) {
-                                return extractedTitle;
+                // 제목과 내용을 분리하는 함수
+                const separateTitleAndContent = (diaryContent: string, dominantEmotion: string) => {
+                    if (!diaryContent) {
+                        return {
+                            title: dominantEmotion && emotionMap[dominantEmotion] 
+                                ? `${emotionMap[dominantEmotion]}의 하루` 
+                                : '특별한 하루',
+                            content: '일기가 아직 생성되지 않았습니다.'
+                        };
+                    }
+
+                    const lines = diaryContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                    
+                    // "제목:" 패턴 찾기
+                    const titleIndex = lines.findIndex(line => line.startsWith('제목:'));
+                    
+                    if (titleIndex !== -1) {
+                        // 제목이 있는 경우
+                        const title = lines[titleIndex].replace(/^제목:\s*/, '').trim();
+                        const contentLines = lines.slice(titleIndex + 1);
+                        return {
+                            title: title || '특별한 하루',
+                            content: contentLines.join(' ').trim() || '일기가 아직 생성되지 않았습니다.'
+                        };
+                    } else {
+                        // 제목이 없는 경우 - 첫 번째 줄을 제목으로, 나머지를 내용으로
+                        if (lines.length > 1) {
+                            const firstLine = lines[0];
+                            const title = firstLine.length > 10 ? firstLine.substring(0, 10) + '...' : firstLine;
+                            const content = lines.slice(1).join(' ').trim();
+                            return {
+                                title: title,
+                                content: content || '일기가 아직 생성되지 않았습니다.'
+                            };
+                        } else {
+                            // 한 줄만 있는 경우
+                            const singleLine = lines[0];
+                            if (singleLine.length > 10) {
+                                return {
+                                    title: singleLine.substring(0, 10) + '...',
+                                    content: singleLine.substring(10).trim() || '일기가 아직 생성되지 않았습니다.'
+                                };
+                            } else {
+                                return {
+                                    title: singleLine,
+                                    content: '일기가 아직 생성되지 않았습니다.'
+                                };
                             }
                         }
-                        
-                        // 2. 첫 번째 문장에서 추출 (제목이 없는 경우)
-                        const firstSentence = diaryContent.split('.').find(sentence => sentence.trim().length > 10);
-                        if (firstSentence) {
-                            const trimmed = firstSentence.trim();
-                            return trimmed.length > 20 ? trimmed.substring(0, 20) + '...' : trimmed;
-                        }
                     }
-                    
-                    // 3. 감정 기반 제목
-                    if (dominantEmotion && emotionMap[dominantEmotion]) {
-                        return `${emotionMap[dominantEmotion]}의 하루`;
-                    }
-                    
-                    // 4. 최종 기본값
-                    return '특별한 하루';
                 };
                 
-                const extractedTitle = extractTitleFromDiary(conversation.diary, conversation.dominantEmotion);
+                const { title: extractedTitle, content: cleanedContent } = separateTitleAndContent(conversation.diary, conversation.dominantEmotion);
                 
                 return {
                     id: conversation.id,
@@ -118,10 +155,11 @@ export default function Album() {
                         month: 'short',
                         day: 'numeric'
                     }),
-                    preview: conversation.diary ? conversation.diary.substring(0, 100) + '...' : '일기가 생성 중입니다...',
+                    preview: cleanedContent ? cleanedContent.substring(0, 100) + '...' : '일기가 생성 중입니다...',
                     imageUrl: coverPhoto ? coverPhoto.imageUrl : 'https://picsum.photos/200/200?random=' + conversation.id,
-                    content: conversation.diary || '일기가 아직 생성되지 않았습니다.',
-                    isPending: conversation.processingStatus !== 'COMPLETED'
+                    content: cleanedContent || '일기가 아직 생성되지 않았습니다.',
+                    isPending: conversation.processingStatus !== 'COMPLETED',
+                    emotion: conversation.dominantEmotion || '기쁨'
                 };
             }));
             
@@ -204,50 +242,93 @@ export default function Album() {
     const renderDiaryItem = ({ item }: { item: any }) => (
         <TouchableOpacity
             onPress={() => handleDiaryPress(item)}
-            className="flex-1 bg-white rounded-2xl shadow-sm mb-4 mx-2 overflow-hidden"
+            className="flex-1 mb-6 mx-2"
             activeOpacity={0.8}
         >
-            {/* 일기 이미지 */}
-            <View className="w-full h-32 bg-gray-200">
-                <Image
-                    source={{ uri: item.imageUrl }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                />
-                {/* 저장 중 상태 표시 */}
-                {item.isPending && (
-                    <View className={`absolute top-2 left-2 bg-yellow-500 rounded-full ${settings.isLargeTextMode ? 'px-3 py-2' : 'px-2 py-1'}`}>
-                        <Text className={`text-white font-medium ${settings.isLargeTextMode ? 'text-sm' : 'text-xs'}`}>
-                            저장 중...
+            <View
+                className="rounded-2xl"
+                style={{
+                    backgroundColor: colors.beige,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 12,
+                    elevation: 8,
+                    minHeight: 200,
+                }}
+            >
+                {/* 일기 내용 */}
+                <View className="p-6">
+                    {/* 저장 중 상태 표시 */}
+                    {item.isPending && (
+                        <View className="absolute top-4 right-4 bg-yellow-500 rounded-full px-3 py-1">
+                            <Text className="text-white font-medium text-sm">
+                                저장 중...
+                            </Text>
+                        </View>
+                    )}
+                    
+                    {/* 감정 이미지 */}
+                    <View className="mb-4">
+                            <Image 
+                                source={getEmotionImage(item.emotion)} 
+                                style={{
+                                    width: 60,
+                                    height: 60,
+                                }}
+                                resizeMode="contain"
+                            />  
+                    </View>
+                    
+                    {/* 날짜 */}
+                    <View className="mb-4">
+                        <Text className="text-lg text-gray-500">
+                            {item.date}
                         </Text>
                     </View>
-                )}
-            </View>
-            
-            {/* 일기 내용 */}
-            <View className={`${settings.isLargeTextMode ? 'p-6' : 'p-4'}`}>
-                {/* 날짜 */}
-                <Text className={`mb-2 ${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                    {item.date}
-                </Text>
-                
-                {/* 제목 */}
-                <Text className={`font-semibold mb-2 leading-5 ${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`} numberOfLines={2}>
-                    {item.title}
-                </Text>
-                
-                {/* 미리보기 */}
-                <Text className={`leading-4 ${settings.isLargeTextMode ? 'text-base' : 'text-sm'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-600'}`} numberOfLines={2}>
-                    {item.preview}
-                </Text>
+                    
+                    {/* 제목 */}
+                    <Text className="font-bold mb-4 text-4xl leading-10 text-gray-800">
+                        {item.title}
+                    </Text>
+                    
+                    {/* 미리보기 */}
+                    <Text className="leading-6 text-xl text-gray-600" numberOfLines={3}>
+                        {item.preview}
+                    </Text>
+                    
+                    {/* 하단 아이콘과 액션 */}
+                    <View className="flex-row items-center justify-between mt-6">
+                        <View className="flex-row items-center">
+                            <Ionicons 
+                                name="heart-outline" 
+                                size={16} 
+                                color={colors.green} 
+                            />
+                            <Text className="ml-2 text-sm text-gray-500">
+                                특별한 순간
+                            </Text>
+                        </View>
+                        <View className="flex-row items-center">
+                            <Text className="mr-2 text-sm text-gray-500">
+                                자세히 보기
+                            </Text>
+                            <Ionicons 
+                                name="chevron-forward" 
+                                size={20} 
+                                color={colors.green} 
+                            />
+                        </View>
+                    </View>
+                </View>
             </View>
         </TouchableOpacity>
     );
 
     if (loading) {
         return (
-            <SafeAreaView className={`flex-1 justify-center items-center ${settings.isHighContrastMode ? 'bg-black' : 'bg-gray-50'}`}>
-                <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-500'}`}>
+            <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
+                <Text className="text-xl text-gray-500">
                     일기를 불러오는 중...
                 </Text>
             </SafeAreaView>
@@ -255,22 +336,18 @@ export default function Album() {
     }
 
     return (
-        <SafeAreaView className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : 'bg-gray-50'}`}>
+        <SafeAreaView className="flex-1 bg-gray-50">
             {/* 일기 목록 */}
             <FlatList
                 data={state.diaries}
                 renderItem={renderDiaryItem}
                 keyExtractor={(item) => item.id.toString()}
-                numColumns={2}
-                columnWrapperStyle={{ justifyContent: 'space-between' }}
+                numColumns={1}
                 contentContainerStyle={{ paddingHorizontal: 16 }}
                 ListHeaderComponent={
-                    <View className={`${settings.isLargeTextMode ? 'px-6 py-8' : 'px-4 py-6'}`}>
-                        <Text className={`font-bold mb-2 ${settings.isLargeTextMode ? 'text-3xl' : 'text-2xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+                    <View className="px-4 py-6">
+                        <Text className="text-3xl font-bold mb-3 text-gray-800">
                             나의 일기장
-                        </Text>
-                        <Text className={`${settings.isLargeTextMode ? 'text-lg' : 'text-base'} ${settings.isHighContrastMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            특별한 순간들을 담은 일기들을 확인해보세요
                         </Text>
                     </View>
                 }

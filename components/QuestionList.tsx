@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { ReactNode } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { colors } from '../styles/commonStyles';
 
 interface Props {
     children: ReactNode;
@@ -60,12 +61,12 @@ export default function QuestionList({ children, onPress }: Props) {
                     <View 
                         className="w-3 h-3 rounded-full mr-3"
                         style={{
-                            backgroundColor: '#fad0c4',
+                            backgroundColor: colors.green,
                         }}
                     />
                     
                     <View className="flex-1 mx-2">
-                        <Text className="text-black text-base font-medium leading-5">
+                        <Text className="text-black text-xl font-medium leading-5">
                             {displayText}
                         </Text>
                     </View>

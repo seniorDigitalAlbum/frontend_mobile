@@ -16,7 +16,7 @@ export const MOCK_USERS = {
     TEST_USER: {
         id: 'test-user-123',
         userId: 'test_user_123',
-        name: '테스트 사용자',
+        name: '나림',
         phone: '010-0000-0000',
         profileImage: null,
         gender: null,

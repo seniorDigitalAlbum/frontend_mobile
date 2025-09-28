@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import AnswerMic from './AnswerMic';
-import NextButton from './NextButton';
+import { colors } from '../styles/commonStyles';
 
 interface UserAnswerSectionProps {
   questionId: string | number;
@@ -12,7 +12,6 @@ interface UserAnswerSectionProps {
   onRecordingComplete: (audioUri: string, questionId: string) => void;
   onRecordingStart: (questionId: string) => void;
   onAIResponse?: (aiResponse: string, audioBase64?: string) => void;
-  onNext: () => void;
   onEndChat: () => void;
   transcribedText?: string | null;
   isRecording?: boolean;
@@ -29,7 +28,6 @@ export default function UserAnswerSection({
   onRecordingComplete,
   onRecordingStart,
   onAIResponse,
-  onNext,
   onEndChat,
   transcribedText,
   isRecording,
@@ -53,38 +51,21 @@ export default function UserAnswerSection({
             maxDuration={120} // 2분으로 설정
           />
           
-          {/* 녹음 상태 표시 */}
-          {isRecording && (
-            <View className="mt-4 bg-red-100 px-4 py-2 rounded-full">
-              <Text className="text-red-600 font-medium">🎤 녹음 중...</Text>
-            </View>
-          )}
-          
-          {/* STT 변환 결과 표시 (디버깅용) */}
-          {transcribedText && (
-            <View className="mt-4 bg-green-100 p-3 rounded-lg max-w-sm">
-              <Text className="text-green-800 text-sm">
-                변환된 텍스트: {transcribedText}
-              </Text>
-            </View>
-          )}
         </View>
       )}
 
       {/* 버튼들 */}
       <View className="w-full">
-        {/* 다음으로 버튼 - AI 응답을 받았을 때만 표시 */}
-        {/* {hasAIResponse && (
-          <View className="mb-4">
-            <NextButton onPress={onNext} />
-          </View>
-        )} */}
-        
-        {/* 이 대화를 끝낼래요 - 줄 쳐진 텍스트로 표시 */}
+        {/* 이 대화를 끝낼래요 - 검정색 배경 버튼으로 표시 */}
         {isQuestionComplete && (
           <View className="items-center">
-            <TouchableOpacity onPress={onEndChat} activeOpacity={0.7}>
-              <Text className="text-gray-500 text-sm underline">
+            <TouchableOpacity 
+              onPress={onEndChat} 
+              activeOpacity={0.7}
+              className="px-8 py-4 rounded-full"
+              style={{ backgroundColor: colors.black }}
+            >
+              <Text className="text-white text-2xl font-medium">
                 이 대화를 끝낼래요
               </Text>
             </TouchableOpacity>
