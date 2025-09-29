@@ -38,6 +38,8 @@ jobs:
       - name: Copy assets
         run: |
           cp -r assets/* dist/assets/
+          # .nojekyll 파일 생성
+          touch dist/.nojekyll
           
       - name: Fix paths for GitHub Pages
         run: |
