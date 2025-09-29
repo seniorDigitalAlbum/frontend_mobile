@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ] 
+    branches: [ featue/deploy ] 
   workflow_dispatch:
 
 permissions:
@@ -37,15 +37,15 @@ jobs:
           
       - name: Copy assets
         run: |
-          Copy-Item "assets/*" "dist/assets/" -Recurse -Force
+          cp -r assets/* dist/assets/
           
       - name: Fix paths for GitHub Pages
         run: |
           sed -i 's|/_expo/static/|/frontend_mobile/_expo/static/|g' dist/index.html
           sed -i 's|/favicon.ico|/frontend_mobile/favicon.ico|g' dist/index.html
-          # 에셋 경로 수정 (PowerShell 명령어)
-          Get-ChildItem -Path "dist" -Recurse -Filter "*.js" | ForEach-Object { (Get-Content $_.FullName) -replace '/assets/', '/frontend_mobile/assets/' | Set-Content $_.FullName }
-          Get-ChildItem -Path "dist" -Recurse -Filter "*.css" | ForEach-Object { (Get-Content $_.FullName) -replace '/assets/', '/frontend_mobile/assets/' | Set-Content $_.FullName }
+          # 에셋 경로 수정 (Linux 명령어)
+          find dist -name "*.js" -exec sed -i 's|/assets/|/frontend_mobile/assets/|g' {} \;
+          find dist -name "*.css" -exec sed -i 's|/assets/|/frontend_mobile/assets/|g' {} \;
           
       - name: Setup Pages
         uses: actions/configure-pages@v4
