@@ -11,6 +11,7 @@ config.resolver.alias = {
 // Web 빌드를 위한 publicPath 설정
 if (process.env.EXPO_PLATFORM === 'web') {
   config.resolver.publicPath = '/frontend_mobile/';
+  config.resolver.assetExts = [...config.resolver.assetExts, 'png', 'jpg', 'jpeg', 'gif', 'svg'];
 }
 
 // Jest worker 에러 해결을 위한 설정

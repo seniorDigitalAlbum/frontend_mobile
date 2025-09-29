@@ -136,13 +136,38 @@ export function UserProvider({ children }: UserProviderProps) {
       // userType이 변경되는 경우 백엔드에 업데이트 요청
       if (userData.userType && userData.userType !== user.userType) {
         console.log('사용자 타입 업데이트:', userData.userType);
+        
+        // 토큰이 없으면 로컬에서만 업데이트
+        if (!user.token) {
+          console.log('토큰이 없어서 로컬에서만 사용자 타입 업데이트');
+          const updatedUser = { ...user, ...userData };
+          setUser(updatedUser);
+          
+          if (Platform.OS === 'web') {
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+          } else {
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          }
+          return;
+        }
+        
         const response = await userService.updateUserType(user.userId, userData.userType, user.token);
         
         if (response.success && response.user) {
           // 백엔드에서 업데이트된 사용자 정보로 로컬 상태 업데이트
-          const updatedUser = { ...user, ...response.user, userType: userData.userType };
+          const updatedUser = { 
+            ...user, 
+            ...response.user, 
+            id: response.user.id.toString(), // number를 string으로 변환
+            userType: userData.userType 
+          };
           setUser(updatedUser);
-          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          
+          if (Platform.OS === 'web') {
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+          } else {
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          }
           console.log('사용자 타입이 백엔드에 성공적으로 업데이트되었습니다.');
         } else {
           throw new Error(response.message || '사용자 타입 업데이트에 실패했습니다.');
@@ -151,7 +176,12 @@ export function UserProvider({ children }: UserProviderProps) {
         // userType이 아닌 다른 필드 업데이트
         const updatedUser = { ...user, ...userData };
         setUser(updatedUser);
-        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        
+        if (Platform.OS === 'web') {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        } else {
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        }
       }
     } catch (error) {
       console.error('Failed to update user:', error);

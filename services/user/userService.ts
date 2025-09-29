@@ -90,6 +90,74 @@ class UserService {
       };
     }
   }
+
+  /**
+   * 이름으로 시니어 검색
+   */
+  async searchSeniorsByName(name: string): Promise<User[]> {
+    try {
+      console.log('이름으로 시니어 검색 API 호출:', `/api/users/search/seniors/name?name=${name}`);
+      
+      const seniors: User[] = await apiClient.get<User[]>(`/api/users/search/seniors/name?name=${encodeURIComponent(name)}`);
+      console.log('이름으로 시니어 검색 성공:', seniors);
+      
+      return seniors;
+    } catch (error) {
+      console.error('이름으로 시니어 검색 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 전화번호로 시니어 검색
+   */
+  async searchSeniorsByPhoneNumber(phoneNumber: string): Promise<User[]> {
+    try {
+      console.log('전화번호로 시니어 검색 API 호출:', `/api/users/search/seniors/phone?phoneNumber=${phoneNumber}`);
+      
+      const seniors: User[] = await apiClient.get<User[]>(`/api/users/search/seniors/phone?phoneNumber=${encodeURIComponent(phoneNumber)}`);
+      console.log('전화번호로 시니어 검색 성공:', seniors);
+      
+      return seniors;
+    } catch (error) {
+      console.error('전화번호로 시니어 검색 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 시니어 통합 검색 (이름 또는 전화번호)
+   */
+  async searchSeniors(searchTerm: string): Promise<User[]> {
+    try {
+      console.log('시니어 통합 검색 API 호출:', `/api/users/search/seniors?searchTerm=${searchTerm}`);
+      
+      const seniors: User[] = await apiClient.get<User[]>(`/api/users/search/seniors?searchTerm=${encodeURIComponent(searchTerm)}`);
+      console.log('시니어 통합 검색 성공:', seniors);
+      
+      return seniors;
+    } catch (error) {
+      console.error('시니어 통합 검색 실패:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 시니어 정확한 검색 (이름과 전화번호 모두 일치)
+   */
+  async searchSeniorsExact(name: string, phoneNumber: string): Promise<User[]> {
+    try {
+      console.log('시니어 정확한 검색 API 호출:', `/api/users/search/seniors/exact?name=${name}&phoneNumber=${phoneNumber}`);
+      
+      const seniors: User[] = await apiClient.get<User[]>(`/api/users/search/seniors/exact?name=${encodeURIComponent(name)}&phoneNumber=${encodeURIComponent(phoneNumber)}`);
+      console.log('시니어 정확한 검색 성공:', seniors);
+      
+      return seniors;
+    } catch (error) {
+      console.error('시니어 정확한 검색 실패:', error);
+      throw error;
+    }
+  }
 }
 
 export const userService = new UserService();

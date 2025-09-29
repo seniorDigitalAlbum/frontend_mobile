@@ -14,7 +14,7 @@
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform, View, ActivityIndicator, LogBox } from 'react-native';
+import { Platform, View, ActivityIndicator, LogBox, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +22,7 @@ import { DiaryProvider } from './contexts/DiaryContext';
 import { ConversationProvider } from './contexts/ConversationContext';
 import { AccessibilityProvider, useAccessibility } from './contexts/AccessibilityContext';
 import { UserProvider, useUser, UserType } from './contexts/UserContext';
+import { WebSocketProvider } from './contexts/WebSocketContext';
 import GlobalAccessibilityWrapper from './components/GlobalAccessibilityWrapper';
 import { colors } from './styles/commonStyles';
 import './global.css';
@@ -29,7 +30,9 @@ import './global.css';
 import Login from './screens/Login';
 import UserRoleSelection from './screens/UserRoleSelection';
 import { KakaoUserInfo } from './services/kakaoAuthService';
+import { SeniorInfo } from './services/guardianService';
 import GuardianConnection from './screens/GuardianConnection';
+import GuardianConnectionResult from './screens/GuardianConnectionResult';
 import GuardianConnectionTest from './screens/GuardianConnectionTest';
 import GuardianMain from './screens/GuardianMain';
 import SeniorAlbumList from './screens/SeniorAlbumList';
@@ -40,6 +43,7 @@ import MyPage from './screens/MyPage';
 import CameraTest from './screens/CameraTest';
 import MicrophoneTest from './screens/MicrophoneTest';
 import Notification from './screens/Notification';
+import SeniorNotification from './screens/SeniorNotification';
 // import AIChat from './screens/AIChat'; // 사용되지 않는 화면
 // import UserAnswer from './screens/UserAnswer'; // 사용되지 않는 화면
 import Conversation from './screens/Conversation';
@@ -57,9 +61,17 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
  * 각 화면으로 전달되는 파라미터들을 타입으로 정의합니다.
  */
 export type RootStackParamList = {
-  Login: undefined;                    // 로그인 화면 (파라미터 없음)
+  Login: {                            // 로그인 화면
+    code?: string;                    // 카카오 인증 코드
+    token?: string;                   // JWT 토큰
+    fromDeepLink?: boolean;           // 딥링크로 전달된 여부
+  };
   SignUp: undefined;                   // 회원가입 화면 (파라미터 없음)
-  UserRoleSelection: undefined;        // 사용자 역할 선택 화면 (파라미터 없음)
+  UserRoleSelection: {                 // 사용자 역할 선택 화면
+    code?: string;                     // 카카오 인증 코드
+    token?: string;                    // JWT 토큰
+    fromDeepLink?: boolean;            // 딥링크로 전달된 여부
+  };
   SignUp2: {                          // 회원가입 2단계 화면
     userType: 'SENIOR' | 'GUARDIAN';  // 사용자 타입
     phoneNumber: string;               // 인증된 전화번호
@@ -68,8 +80,17 @@ export type RootStackParamList = {
     kakaoGender?: string;              // 카카오 성별
   };
   GuardianConnection: undefined;      // 보호자-시니어 연결 화면 (파라미터 없음)
+  GuardianConnectionResult: {         // 보호자-시니어 연결 결과 화면
+    seniors: SeniorInfo[];
+    selectedSeniors: SeniorInfo[];
+    onSeniorToggle: (senior: SeniorInfo) => void;
+    onConnect: () => void;
+    onBack: () => void;
+    isConnecting: boolean;
+  };
   GuardianConnectionTest: undefined;  // 보호자-시니어 연결 테스트 화면 (파라미터 없음)
   GuardianMain: undefined;            // 보호자 메인 화면
+  MyPage: undefined;                  // 마이페이지 화면
   SeniorAlbumList: {                  // 시니어 앨범 목록 화면
     seniorId: number;
     seniorName: string;
@@ -103,6 +124,7 @@ export type RootStackParamList = {
     userId: string;                    // 사용자 ID
   };
   Notification: undefined;
+  SeniorNotification: undefined;
   Conversation: { 
     questionText: string;
     questionId?: number;
@@ -147,7 +169,7 @@ const Tab = createBottomTabNavigator();
 
 // 웹에서 URL 라우팅을 위한 linking 설정
 const linking = Platform.OS === 'web' ? {
-  prefixes: ['http://localhost:8081', 'https://seniordigitalalbum.github.io/frontend_mobile'],
+  prefixes: ['http://localhost:8081', 'https://seniordigitalalbum.github.io/frontend_mobile', 'https://seniordigitalalbum.github.io'],
   config: {
     screens: {
       MainTabs: {
@@ -347,12 +369,12 @@ function MainTabs() {
  */
 function ProtectedScreen({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useUser();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
   useEffect(() => {
     if (!isLoading && (!user || !user.token)) {
       console.log('인증되지 않은 사용자 또는 JWT 토큰 없음 - Login으로 리다이렉트');
-      navigation.navigate('Login');
+      navigation.navigate('Login' as any);
     }
   }, [user, isLoading, navigation]);
 
@@ -360,7 +382,7 @@ function ProtectedScreen({ children }: { children: React.ReactNode }) {
   if (isLoading || !user || !user.token) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.cream }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.green} />
       </View>
     );
   }
@@ -438,20 +460,66 @@ function AppNavigator() {
     checkInitialRoute();
   }, []);
 
+  // 딥링크 처리
+  useEffect(() => {
+    const handleDeepLink = (url: string) => {
+      console.log('🔗 딥링크 수신:', url);
+      
+      if (url.startsWith('dearmind://kakao-auth')) {
+        const urlParams = new URLSearchParams(url.split('?')[1]);
+        const code = urlParams.get('code');
+        const token = urlParams.get('token');
+        const error = urlParams.get('error');
+        
+        if (error) {
+          console.error('카카오 로그인 에러:', error);
+          Alert.alert('로그인 실패', error);
+          return;
+        }
+        
+        if (code && token) {
+          console.log('카카오 콜백 코드와 토큰:', code, token);
+          // UserRoleSelection 화면으로 직접 이동
+          navigationRef.current?.navigate('UserRoleSelection' as any, { 
+            code, 
+            token,
+            fromDeepLink: true 
+          });
+        }
+      }
+    };
+
+    // 앱이 실행 중일 때 딥링크 감지
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    // 앱이 종료된 상태에서 딥링크로 실행된 경우
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
   // 초기 화면 결정
-  const getInitialRouteName = () => {
+  const getInitialRouteName = (): keyof RootStackParamList => {
     if (isLoading || initialRoute === null) {
       return "Login"; // 로딩 중이거나 초기 라우트가 결정되지 않은 경우
     }
     
-    return initialRoute;
+    return initialRoute as keyof RootStackParamList;
   };
 
   // 로딩 중이거나 초기 라우트가 결정되지 않은 경우 로딩 화면 표시
   if (isLoading || initialRoute === null) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.cream }}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={colors.green} />
       </View>
     );
   }
@@ -477,11 +545,17 @@ function AppNavigator() {
             {/* 보호자-시니어 연결 화면 (전화번호) */}
             <Stack.Screen name="GuardianConnection" component={GuardianConnection} />
             
+            {/* 보호자-시니어 연결 결과 화면 */}
+            <Stack.Screen name="GuardianConnectionResult" component={GuardianConnectionResult} />
+            
             {/* 보호자-시니어 연결 테스트 화면 */}
             <Stack.Screen name="GuardianConnectionTest" component={GuardianConnectionTest} />
             
             {/* 보호자 메인 화면 */}
             <Stack.Screen name="GuardianMain" component={GuardianMain} />
+            
+            {/* 마이페이지 화면 */}
+            <Stack.Screen name="MyPage" component={MyPage} />
             
             {/* 시니어 앨범 목록 화면 */}
             <Stack.Screen name="SeniorAlbumList" component={SeniorAlbumList} />
@@ -510,6 +584,7 @@ function AppNavigator() {
             
             {/* 알림 화면 */}
             <Stack.Screen name="Notification" component={Notification} />
+            <Stack.Screen name="SeniorNotification" component={SeniorNotification} />
             
             {/* 채팅 화면 */}
             <Stack.Screen name="Chat" component={Chat} />
@@ -552,11 +627,13 @@ export default function App() {
       <AccessibilityProvider>
         <GlobalAccessibilityWrapper>
           <UserProvider>
-            <DiaryProvider>
-              <ConversationProvider>
-                <AppNavigator />
-              </ConversationProvider>
-            </DiaryProvider>
+            <WebSocketProvider>
+              <DiaryProvider>
+                <ConversationProvider>
+                  <AppNavigator />
+                </ConversationProvider>
+              </DiaryProvider>
+            </WebSocketProvider>
           </UserProvider>
         </GlobalAccessibilityWrapper>
       </AccessibilityProvider>

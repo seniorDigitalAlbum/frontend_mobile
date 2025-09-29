@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert, StatusBar } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import NotificationIcon from '../components/NotificationIcon';
 import { RootStackParamList } from '../App';
 import { colors } from '../styles/commonStyles';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +18,7 @@ export default function GuardianMain({ navigation }: Props) {
     const [isLoading, setIsLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [seniorCoverPhotos, setSeniorCoverPhotos] = useState<{[key: string]: string}>({});
+
 
     useEffect(() => {
         loadConnectedSeniors();
@@ -147,13 +149,28 @@ export default function GuardianMain({ navigation }: Props) {
     return (
         <View className="flex-1">
             <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
+            
+            {/* 알림 아이콘 */}
+            <View
+                className="absolute top-12 right-6 z-10 bg-white rounded-full p-3 shadow-lg"
+                style={{
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 4,
+                }}
+            >
+                <NotificationIcon size={24} color="#000" />
+            </View>
+            
             <ScrollView 
                 className="flex-1"
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
-                <View className="flex-1 px-6 pt-12">
+                <View className="flex-1 px-6 pt-12 pb-20">
                     {/* 헤더 */}
                     <View className="mb-8 mt-4">
                         <Text className="text-3xl font-bold mb-2" style={{ color: colors.darkGreen }}>
@@ -236,6 +253,57 @@ export default function GuardianMain({ navigation }: Props) {
 
                 </View>
             </ScrollView>
+            
+            {/* 하단 네비게이션 바 */}
+            <View 
+                className="absolute bottom-5 left-5 right-5 flex-row justify-around items-center"
+                style={{
+                    height: 60,
+                    backgroundColor: 'white',
+                    borderTopLeftRadius: 20,
+                    borderTopRightRadius: 20,
+                    borderBottomLeftRadius: 20,
+                    borderBottomRightRadius: 20,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.18)',
+                    shadowColor: '#000',
+                    shadowOffset: {
+                        width: 0,
+                        height: 8,
+                    },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 32,
+                    elevation: 8,
+                }}
+            >
+                {/* 홈 버튼 */}
+                <TouchableOpacity 
+                    className="flex-1 items-center justify-center py-2"
+                    onPress={() => {
+                        // 현재 화면이므로 아무것도 하지 않음
+                    }}
+                >
+                    <View className="w-8 h-8 items-center justify-center mb-1">
+                        <Text className="text-2xl">🏠</Text>
+                    </View>
+                    <Text className="text-xs font-medium" style={{ color: '#000' }}>
+                        홈
+                    </Text>
+                </TouchableOpacity>
+
+                {/* 마이페이지 버튼 */}
+                <TouchableOpacity 
+                    className="flex-1 items-center justify-center py-2"
+                    onPress={() => navigation.navigate('MyPage')}
+                >
+                    <View className="w-8 h-8 items-center justify-center mb-1">
+                        <Text className="text-2xl">👤</Text>
+                    </View>
+                    <Text className="text-xs font-medium" style={{ color: 'rgba(0, 0, 0, 0.6)' }}>
+                        마이페이지
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }

@@ -1,4 +1,5 @@
-import { API_BASE_URL } from '../config/api';
+import { apiClient } from '../config/api';
+import { GuardianSeniorRelationship } from './api/relationshipApiService';
 
 export interface SeniorInfo {
   id: number;
@@ -7,6 +8,7 @@ export interface SeniorInfo {
   kakaoId?: string;
   kakaoNickname?: string;
   kakaoProfileImage?: string;
+  phoneNumber?: string;
 }
 
 export interface ConnectResponse {
@@ -15,56 +17,18 @@ export interface ConnectResponse {
 }
 
 class GuardianService {
-  private baseUrl = `${API_BASE_URL}/api/guardian`;
-
   /**
-   * 카카오 친구 중 시니어 검색 (JWT 토큰 사용)
-   */
-  async searchKakaoFriends(jwtToken: string): Promise<SeniorInfo[]> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/login/kakao/search-friends`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${jwtToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        return data.seniors || [];
-      } else {
-        throw new Error(data.message || '친구 검색에 실패했습니다.');
-      }
-    } catch (error) {
-      console.error('카카오 친구 중 시니어 검색 실패:', error);
-      return [];
-    }
-  }
-
-  /**
-   * 시니어와 연결
+   * 시니어와 연결 (관계 요청 생성)
    */
   async connectSenior(guardianId: number, seniorId: number): Promise<ConnectResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/connect-senior`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ guardianId, seniorId })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result: ConnectResponse = await response.json();
-      return result;
+      // apiClient 사용하여 관계 요청 생성
+      await apiClient.post(`/api/relationships/request?guardianId=${guardianId}&seniorId=${seniorId}`);
+      
+      return {
+        success: true,
+        message: '연결 요청이 전송되었습니다. 시니어의 승인을 기다려주세요.'
+      };
     } catch (error) {
       console.error('시니어 연결 실패:', error);
       return {
@@ -75,22 +39,21 @@ class GuardianService {
   }
 
   /**
-   * 연결된 시니어 목록 조회
+   * 연결된 시니어 목록 조회 (승인된 관계만)
    */
   async getConnectedSeniors(guardianId: number): Promise<SeniorInfo[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/connected-seniors/${guardianId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const seniors: SeniorInfo[] = await response.json();
+      const relationships = await apiClient.get<GuardianSeniorRelationship[]>(`/api/relationships/guardian/${guardianId}/approved`);
+      
+      // 관계 정보를 SeniorInfo 형태로 변환
+      const seniors: SeniorInfo[] = relationships.map((rel) => ({
+        id: rel.seniorId,
+        name: rel.seniorName || '시니어',
+        phoneNumber: '',
+        profileImage: '',
+        kakaoId: ''
+      }));
+      
       return seniors;
     } catch (error) {
       console.error('연결된 시니어 목록 조회 실패:', error);

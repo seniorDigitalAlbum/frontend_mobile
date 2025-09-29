@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useLayoutEffect, useCallback } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import NotificationIcon from '../components/NotificationIcon';
 import Album from './Album';
 import AlbumHero from '../components/AlbumHero';
 import QuestionList from '../components/QuestionList';
@@ -35,33 +35,6 @@ export default function Home() {
         handleScroll,
     } = useSeniorHome();
 
-    useLayoutEffect(() => {
-        navigation.setOptions({
-            headerRight: () => (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('TestScreen')}
-                        className="mr-2"
-                    >
-                        <Ionicons name="flask-outline" size={20} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Notification')}
-                        className="mr-4"
-                    >
-                        <Ionicons name="notifications-outline" size={24} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-            ),
-            headerStyle: {
-                backgroundColor: 'transparent',
-                borderBottomWidth: 0,
-                elevation: 0,
-                shadowOpacity: 0,
-            },
-            headerTransparent: true,
-        });
-    }, [navigation]);
 
     useEffect(() => {
         loadInitialQuestions();
@@ -83,11 +56,26 @@ export default function Home() {
     console.log(`Rendering ${questions.length} questions`);
 
     return (
-        <ScrollView
-            className="flex flex-1 p-8 bg-white"
-            onScroll={(event) => handleScroll(event)}
-            scrollEventThrottle={400}
-        >
+        <View className="flex-1">
+            {/* 알림 아이콘 */}
+            <View
+                className="absolute top-12 right-6 z-10 bg-white rounded-full p-3 shadow-lg"
+                style={{
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 4,
+                }}
+            >
+                <NotificationIcon size={24} color="#000" />
+            </View>
+            
+            <ScrollView
+                className="flex flex-1 p-8 bg-white"
+                onScroll={(event) => handleScroll(event)}
+                scrollEventThrottle={400}
+            >
 
             {/* 앨범 표지 */}
             <View className="my-6">
@@ -161,6 +149,7 @@ export default function Home() {
                         </View>
                     )}
                 </View>
-        </ScrollView >
+            </ScrollView>
+        </View>
     );
 }

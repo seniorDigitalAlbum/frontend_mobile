@@ -18,6 +18,23 @@ export default function MyPage() {
     loadProfile();
   }, []);
 
+  // 전화번호 포맷팅 함수
+  const formatPhoneNumber = (phone: string) => {
+    if (!phone) return phone;
+    
+    // 숫자만 추출
+    const numbers = phone.replace(/[^0-9]/g, '');
+    
+    // 길이에 따라 포맷팅
+    if (numbers.length === 11) {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`;
+    } else if (numbers.length === 10) {
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+    }
+    
+    return phone; // 포맷팅할 수 없는 경우 원본 반환
+  };
+
   const loadProfile = async () => {
     try {
       setLoading(true);
@@ -27,7 +44,7 @@ export default function MyPage() {
         const userProfile: Profile = {
           id: user.id,
           name: user.name,
-          phone: user.phone,
+          phone: formatPhoneNumber(user.phone),
           profileImage: user.profileImage,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt

@@ -1,6 +1,7 @@
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getDevServerIp } from '../config/api';
 import { Platform } from 'react-native';
 
+const isWeb = Platform.OS === 'web';
 export interface KakaoAuthResponse {
   authUrl?: string;
   loginUrl?: string;
@@ -32,56 +33,40 @@ export interface KakaoUserInfo {
 }
 
 class KakaoAuthService {
-  public baseUrl = `${API_BASE_URL}/api/auth`;
+  private baseUrl = `${API_BASE_URL}/api/auth`;
 
   /**
-   * 현재 기기의 IP 주소 가져오기 (Expo Go용)
-   */
-  private async getCurrentDeviceIP(): Promise<string | null> {
-    try {
-      // API_BASE_URL에서 IP 추출 (예: http://192.168.1.100:8080 -> 192.168.1.100)
-      const url = new URL(API_BASE_URL);
-      return url.hostname;
-    } catch (error) {
-      console.error('IP 주소 추출 실패:', error);
-      return null;
-    }
-  }
-
-  /**
-   * 카카오 로그인 URL 가져오기
+   * [웹/모바일 공용] 백엔드에서 카카오 로그인 URL을 받아오는 함수
    */
   async getKakaoAuthUrl(): Promise<string> {
     try {
-      const url = `${this.baseUrl}/kakao/login-url`;
-      console.log('카카오 로그인 URL 요청:', url);
+      // isMobile과 clientIp를 쿼리 파라미터로 백엔드에 전달
+      const params = new URLSearchParams();
+      if (!isWeb) {
+        params.append('isMobile', 'true');
+        const clientIp = getDevServerIp();
+        if (clientIp) {
+          params.append('clientIp', clientIp);
+        }
+      }
       
+      const queryString = params.toString();
+      const url = `${this.baseUrl}/kakao/login-url${queryString ? '?' + queryString : ''}`;
+
+      console.log('백엔드에 카카오 로그인 URL 요청:', url);
       const response = await fetch(url);
-      console.log('카카오 로그인 URL 응답 상태:', response.status);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('카카오 로그인 URL 요청 실패:', response.status, errorText);
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        throw new Error('카카오 로그인 URL을 가져오는데 실패했습니다.');
       }
-      
-      const data: any = await response.json();
-      console.log('카카오 로그인 URL 응답 데이터:', data);
-      
-      // 백엔드에서 loginUrl로 응답하므로 이를 사용
-      const authUrl = data.loginUrl || data.authUrl;
-      
-      if (!authUrl) {
-        console.error('응답에 loginUrl 또는 authUrl이 없음:', data);
-        throw new Error('응답에 로그인 URL이 없습니다.');
-      }
-      
-      return authUrl;
+      const data = await response.json();
+      console.log('백엔드로부터 카카오 로그인 URL 수신:', data.loginUrl);
+      return data.loginUrl;
     } catch (error) {
-      console.error('카카오 로그인 URL 가져오기 실패:', error);
-      throw new Error('카카오 로그인 URL을 가져올 수 없습니다.');
+      console.error('getKakaoAuthUrl 에러:', error);
+      throw error;
     }
-  }
+  }  
 
 
   /**
@@ -99,7 +84,7 @@ class KakaoAuthService {
       
       return response.ok;
     } catch (error) {
-      console.error('카카오 로그아웃 실패:', error);
+      console.error('카카오 로그아웃 실패:', error);W
       return false;
     }
   }

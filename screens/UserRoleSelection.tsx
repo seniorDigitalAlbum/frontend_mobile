@@ -30,9 +30,8 @@ export default function UserRoleSelection({ route, navigation }: Props) {
                     <Text className="text-4xl font-bold text-center mb-4" style={{ color: colors.darkGreen }}>
                         환영합니다!
                     </Text>
-                    {/* {getUserDisplayName()} */}
                     <Text className="text-lg text-center leading-6" style={{ color: colors.darkGreen }}>
-                        {user?.name || '사용자'}님,{'\n'}사용자 유형을 선택해주세요.
+                        {user?.name || '사용자'}님,{'\n'}당신은 누구신가요?
                     </Text>
                 </View>
 

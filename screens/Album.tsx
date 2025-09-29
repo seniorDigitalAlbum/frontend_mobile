@@ -14,25 +14,6 @@ import { colors } from '../styles/commonStyles';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// 임시 일기 데이터 (나중에 API로 연결)
-const generateMockDiaries = () => {
-    const diaries = [];
-    for (let i = 1; i <= 20; i++) {
-        diaries.push({
-            id: i,
-            title: `오늘은 정말 특별한 하루였어요 #${i}`,
-            date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR', {
-                month: 'short',
-                day: 'numeric'
-            }),
-            preview: `오늘은 정말 특별한 하루였습니다. 친구들과 함께 공원에서 숨바꼭질을 하며 즐거운 시간을 보냈습니다...`,
-            imageUrl: `https://picsum.photos/200/200?random=${i}`,
-            content: `오늘은 정말 특별한 하루였습니다. 친구들과 함께 공원에서 숨바꼭질을 하며 즐거운 시간을 보냈습니다. 햇살이 따뜻하게 비치는 날씨 속에서 우리는 웃음소리를 내며 뛰어다녔고, 서로를 찾는 과정에서 더욱 친해질 수 있었습니다.`,
-            isPending: false
-        });
-    }
-    return diaries;
-};
 
 export default function Album() {
     const { state, setDiaries, getDiaryById } = useDiary();
@@ -90,21 +71,17 @@ export default function Album() {
 
             // 대화 데이터를 일기 형태로 변환 (앨범 표지 정보 포함)
             const diaryData = await Promise.all(completedAlbums.map(async (conversation) => {
+                // 일기 내용이 없거나 비어있으면 null 반환 (필터링됨)
+                if (!conversation.diary || conversation.diary.trim() === '') {
+                    return null;
+                }
+
                 // 앨범 표지 사진 조회
                 const albumPhotos = await albumApiService.getPhotos(conversation.id);
                 const coverPhoto = albumPhotos.find(photo => photo.isCover);
                 
                 // 제목과 내용을 분리하는 함수
                 const separateTitleAndContent = (diaryContent: string, dominantEmotion: string) => {
-                    if (!diaryContent) {
-                        return {
-                            title: dominantEmotion && emotionMap[dominantEmotion] 
-                                ? `${emotionMap[dominantEmotion]}의 하루` 
-                                : '특별한 하루',
-                            content: '일기가 아직 생성되지 않았습니다.'
-                        };
-                    }
-
                     const lines = diaryContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
                     
                     // "제목:" 패턴 찾기
@@ -162,14 +139,17 @@ export default function Album() {
                     emotion: conversation.dominantEmotion || '기쁨'
                 };
             }));
+
+            // null 값 필터링 (일기 내용이 없는 대화 제외)
+            const validDiaryData = diaryData.filter(diary => diary !== null);
             
-            setDiaries(diaryData);
-            console.log('일기 데이터 변환 완료:', diaryData);
+            setDiaries(validDiaryData);
+            console.log('일기 데이터 변환 완료:', validDiaryData);
             
         } catch (error) {
             console.error('앨범 데이터 로드 실패:', error);
-            // API 실패 시 목업 데이터 사용
-            setDiaries(generateMockDiaries());
+            // API 실패 시 빈 배열로 설정
+            setDiaries([]);
         } finally {
             setLoading(false);
         }
@@ -337,26 +317,42 @@ export default function Album() {
 
     return (
         <SafeAreaView className="flex-1 bg-gray-50">
-            {/* 일기 목록 */}
-            <FlatList
-                data={state.diaries}
-                renderItem={renderDiaryItem}
-                keyExtractor={(item) => item.id.toString()}
-                numColumns={1}
-                contentContainerStyle={{ paddingHorizontal: 16 }}
-                ListHeaderComponent={
-                    <View className="px-4 py-6">
-                        <Text className="text-3xl font-bold mb-3 text-gray-800">
-                            나의 일기장
+            {/* 헤더 */}
+            <View className="px-4 py-6">
+                <Text className="text-3xl font-bold mb-3 text-gray-800">
+                    나의 일기장
+                </Text>
+            </View>
+
+            {/* 일기 목록 또는 빈 상태 */}
+            {state.diaries.length > 0 ? (
+                <FlatList
+                    data={state.diaries}
+                    renderItem={renderDiaryItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    numColumns={1}
+                    contentContainerStyle={{ paddingHorizontal: 16 }}
+                    onRefresh={handleRefresh}
+                    refreshing={refreshing}
+                    onEndReached={loadMoreDiaries}
+                    onEndReachedThreshold={0.1}
+                    showsVerticalScrollIndicator={false}
+                />
+            ) : (
+                <View className="flex-1 justify-center items-center px-8">
+                    <View className="items-center">
+                        <View className="w-24 h-24 rounded-full bg-gray-200 items-center justify-center mb-6">
+                            <Ionicons name="book-outline" size={40} color="#9CA3AF" />
+                        </View>
+                        <Text className="text-xl font-medium text-gray-600 mb-2">
+                            아직 일기가 없어요
+                        </Text>
+                        <Text className="text-base text-gray-500 text-center leading-6">
+                            첫 번째 대화를 시작해서{'\n'}소중한 추억을 기록해보세요
                         </Text>
                     </View>
-                }
-                onRefresh={handleRefresh}
-                refreshing={refreshing}
-                onEndReached={loadMoreDiaries}
-                onEndReachedThreshold={0.1}
-                showsVerticalScrollIndicator={false}
-            />
+                </View>
+            )}
         </SafeAreaView>
     );
 }

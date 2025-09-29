@@ -1,53 +1,181 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView, FlatList, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Image, TextInput, ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { gradientColors } from '../styles/commonStyles';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useUser } from '../contexts/UserContext';
+import { colors } from '../styles/commonStyles';
+import { useUser, UserType } from '../contexts/UserContext';
 import guardianService, { SeniorInfo } from '../services/guardianService';
 import kakaoAuthService from '../services/kakaoAuthService';
+import { userService } from '../services/user/userService';
+import { API_BASE_URL } from '../config/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GuardianConnection'>;
 
 export default function GuardianConnection({ navigation }: Props) {
-    const { user } = useUser();
+    const { user, updateUser } = useUser();
     const [isLoading, setIsLoading] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [seniors, setSeniors] = useState<SeniorInfo[]>([]);
     const [selectedSeniors, setSelectedSeniors] = useState<SeniorInfo[]>([]);
+    
+    // 검색 관련 상태
+    const [searchName, setSearchName] = useState('');
+    const [searchPhone, setSearchPhone] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
+    const [nameFocused, setNameFocused] = useState(false);
+    const [phoneFocused, setPhoneFocused] = useState(false);
 
+    // 전화번호 포맷팅 함수
+    const formatPhoneNumber = (text: string) => {
+        // 숫자만 추출
+        const numbers = text.replace(/[^0-9]/g, '');
+        
+        // 길이에 따라 포맷팅
+        if (numbers.length <= 3) {
+            setSearchPhone(numbers);
+        } else if (numbers.length <= 7) {
+            setSearchPhone(`${numbers.slice(0, 3)}-${numbers.slice(3)}`);
+        } else if (numbers.length <= 11) {
+            setSearchPhone(`${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7)}`);
+        } else {
+            // 11자리 초과시 11자리까지만
+            const limitedNumbers = numbers.slice(0, 11);
+            setSearchPhone(`${limitedNumbers.slice(0, 3)}-${limitedNumbers.slice(3, 7)}-${limitedNumbers.slice(7)}`);
+        }
+    };
+
+    // 컴포넌트 마운트 시 사용자 인증 상태 확인
     useEffect(() => {
-        loadSeniors();
-    }, []);
+        if (!user || !user.token) {
+            console.log('사용자 인증 정보 없음 - 로그인 화면으로 이동');
+            Alert.alert('인증 필요', '로그인이 필요합니다.', [
+                {
+                    text: '확인',
+                    onPress: () => navigation.navigate('Login' as any)
+                }
+            ]);
+        } else {
+            console.log('사용자 인증 정보 확인됨:', {
+                userId: user.id,
+                hasToken: !!user.token,
+                userType: user.userType,
+                tokenPreview: user.token ? user.token.substring(0, 20) + '...' : '없음'
+            });
+        }
+    }, [user, navigation]);
 
-    const loadSeniors = async () => {
-        setIsLoading(true);
+    // 이름과 전화번호 모두로 시니어 검색
+    const searchSeniorsByBoth = async () => {
+        if (!searchName.trim() || !searchPhone.trim()) {
+            Alert.alert('오류', '이름과 전화번호를 모두 입력해주세요.');
+            return;
+        }
+
+        // JWT 토큰 확인
+        const jwtToken = user?.token;
+        if (!jwtToken) {
+            console.log('❌ JWT 토큰이 없음 - 로그인 화면으로 이동');
+            Alert.alert('오류', '로그인 정보가 없습니다. 다시 로그인해주세요.');
+            navigation.navigate('Login' as any);
+            return;
+        }
+
+        setIsSearching(true);
+        setHasSearched(true);
         try {
-            console.log('카카오 친구에서 시니어 검색 시작');
+            console.log('🔍 이름과 전화번호로 시니어 검색 시작:', { searchName, searchPhone });
+            console.log('🔑 JWT 토큰 상태:', {
+                hasToken: !!jwtToken,
+                tokenLength: jwtToken.length,
+                tokenPreview: jwtToken.substring(0, 20) + '...'
+            });
             
-            // 1. JWT 토큰 가져오기
-            const jwtToken = user?.token || '';
-            
-            if (!jwtToken) {
-                Alert.alert('오류', '로그인 정보가 없습니다. 다시 로그인해주세요.');
-                navigation.navigate('Login');
-                return;
+            // JWT 토큰 디코딩해서 내용 확인
+            try {
+                const tokenParts = jwtToken.split('.');
+                if (tokenParts.length === 3) {
+                    const payload = JSON.parse(atob(tokenParts[1]));
+                    console.log('🎫 JWT 토큰 페이로드:', payload);
+                    console.log('⏰ 토큰 만료 시간:', new Date(payload.exp * 1000));
+                    console.log('⏰ 현재 시간:', new Date());
+                    console.log('⏰ 토큰 만료 여부:', new Date(payload.exp * 1000) < new Date());
+                }
+            } catch (e) {
+                console.error('JWT 토큰 디코딩 실패:', e);
             }
             
-            console.log('JWT 토큰으로 친구 검색');
+            // apiClient 대신 직접 fetch 사용 (포맷팅된 전화번호 그대로 사용)
+            const response = await fetch(`${API_BASE_URL}/api/users/search/seniors/exact?name=${encodeURIComponent(searchName)}&phoneNumber=${encodeURIComponent(searchPhone)}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${jwtToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
 
-            // 2. 카카오 친구 중 우리 앱에 가입된 시니어 검색
-            const registeredSeniors = await guardianService.searchKakaoFriends(jwtToken);
-            setSeniors(registeredSeniors);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const foundSeniors = await response.json();
             
-            console.log('검색된 시니어 수:', registeredSeniors.length);
+            // User[]를 SeniorInfo[]로 변환
+            const seniorInfos: SeniorInfo[] = foundSeniors.map((user: any) => {
+                console.log('🔍 검색된 사용자 데이터:', {
+                    id: user.id,
+                    nickname: user.nickname,
+                    profileImageUrl: user.profileImageUrl,
+                    kakaoId: user.kakaoId,
+                    phoneNumber: user.phoneNumber
+                });
+                
+                return {
+                    id: user.id,
+                    name: user.nickname || '이름 없음',
+                    profileImage: user.profileImageUrl || '',
+                    kakaoId: user.kakaoId || '',
+                    phoneNumber: user.phoneNumber || ''
+                };
+            });
+            
+            setSeniors(seniorInfos);
+            console.log('이름과 전화번호로 검색된 시니어 수:', seniorInfos.length);
+
+            // 검색 결과가 있으면 결과 화면으로 이동
+            if (seniorInfos.length > 0) {
+                navigation.navigate('GuardianConnectionResult' as any, {
+                    seniors: seniorInfos,
+                    selectedSeniors: selectedSeniors,
+                    onSeniorToggle: handleSeniorToggle,
+                    onConnect: handleConnect,
+                    onBack: () => navigation.goBack(),
+                    isConnecting: isConnecting
+                });
+            }
         } catch (error) {
-            console.error('카카오 친구 중 시니어 검색 실패:', error);
-            Alert.alert('오류', '카카오 친구에서 시니어 검색에 실패했습니다.');
+            console.error('이름과 전화번호로 시니어 검색 실패:', error);
+            
+            // 401 에러인 경우 로그인 화면으로 이동
+            if (error instanceof Error && error.message.includes('401')) {
+                Alert.alert('인증 오류', '로그인이 만료되었습니다. 다시 로그인해주세요.', [
+                    {
+                        text: '확인',
+                        onPress: () => navigation.navigate('Login' as any)
+                    }
+                ]);
+            } else {
+                Alert.alert('오류', '이름과 전화번호로 시니어 검색에 실패했습니다.');
+            }
         } finally {
-            setIsLoading(false);
+            setIsSearching(false);
         }
+    };
+
+    // 검색 실행
+    const handleSearch = () => {
+        Keyboard.dismiss(); // 키보드 내리기
+        searchSeniorsByBoth();
     };
 
     const handleSeniorToggle = (senior: SeniorInfo) => {
@@ -85,6 +213,10 @@ export default function GuardianConnection({ navigation }: Props) {
             
             if (successCount === selectedSeniors.length) {
                 console.log('모든 시니어 연결 완료');
+                
+                // 보호자 역할 업데이트
+                await updateUser({ userType: UserType.GUARDIAN });
+                
                 Alert.alert('성공', `${successCount}명의 시니어와 연결되었습니다.`, [
                     {
                         text: '확인',
@@ -92,6 +224,9 @@ export default function GuardianConnection({ navigation }: Props) {
                     }
                 ]);
             } else if (successCount > 0) {
+                // 부분 성공이어도 보호자 역할 업데이트
+                await updateUser({ userType: UserType.GUARDIAN });
+                
                 Alert.alert('부분 성공', `${successCount}명 연결 성공, ${selectedSeniors.length - successCount}명 연결 실패`, [
                     {
                         text: '확인',
@@ -109,161 +244,119 @@ export default function GuardianConnection({ navigation }: Props) {
         }
     };
 
-    const handleSkip = () => {
+    const handleSkip = async () => {
         console.log('나중에 연결하기 선택');
+        
+        // 보호자 역할 업데이트
+        await updateUser({ userType: UserType.GUARDIAN });
+        
         navigation.navigate('GuardianMain');
     };
 
-    const renderSeniorItem = ({ item }: { item: SeniorInfo }) => {
-        const isSelected = selectedSeniors.some(s => s.id === item.id);
-        
-        return (
-            <TouchableOpacity
-                className={`p-4 rounded-xl border-2 mb-3 ${
-                    isSelected 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 bg-white'
-                }`}
-                onPress={() => handleSeniorToggle(item)}
-            >
-                <View className="flex-row items-center">
-                    {/* 체크박스 */}
-                    <View className={`w-6 h-6 rounded-full border-2 mr-3 items-center justify-center ${
-                        isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                    }`}>
-                        {isSelected && (
-                            <Text className="text-white text-sm">✓</Text>
-                        )}
-                    </View>
-                    
-                    {/* 프로필 이미지 */}
-                    <View className="w-12 h-12 rounded-full bg-gray-200 mr-3 items-center justify-center">
-                        {item.kakaoProfileImage ? (
-                            <Image 
-                                source={{ uri: item.kakaoProfileImage }}
-                                className="w-12 h-12 rounded-full"
-                            />
-                        ) : (
-                            <Text className="text-gray-500 text-lg">
-                                {item.name?.charAt(0) || '?'}
-                            </Text>
-                        )}
-                    </View>
-                    
-                    {/* 사용자 정보 */}
-                    <View className="flex-1">
-                        <Text className="text-lg font-semibold text-gray-800 mb-1">
-                            {item.kakaoNickname || item.name}
-                        </Text>
-                        <Text className="text-sm text-gray-600">
-                            카카오 친구
-                        </Text>
-                    </View>
-                </View>
-            </TouchableOpacity>
-        );
-    };
 
     return (
-        <LinearGradient
-            colors={gradientColors as [string, string]}
-            style={{ flex: 1 }}
+        <KeyboardAvoidingView 
+            className="flex-1" 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
-            <ScrollView className="flex-1">
-                <View className="flex-1 px-5 pt-10">
-                    <Text className="text-3xl font-bold text-center mb-3 text-gray-800">
-                        시니어와 연결하기
-                </Text>
-                    <Text className="text-base text-center mb-8 text-gray-600">
-                        카카오 친구 중 우리 앱에 가입된 시니어를 찾아 연결할 수 있습니다
-                    </Text>
-
-                    {isLoading ? (
-                        <View className="items-center py-8">
-                            <Text className="text-gray-600">시니어 검색 중...</Text>
+            <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
+            <TouchableOpacity 
+                className="flex-1 flex-col px-6 py-0 justify-center gap-8"
+                activeOpacity={1}
+                onPress={Keyboard.dismiss}
+            >
+                    {/* 헤더 섹션 */}
+                <View className="items-center">
+                    <Image source={require('../assets/Phone.png')} className="w-full h-40 mt-10" resizeMode="contain" />
                 </View>
-                    ) : seniors.length > 0 ? (
-                        <>
-                            <Text className="text-lg font-semibold mb-4 text-gray-800">
-                                가입된 시니어 ({seniors.length}명)
-                            </Text>
-                            
-                            {selectedSeniors.length > 0 && (
-                                <Text className="text-sm text-blue-600 mb-3">
-                                    {selectedSeniors.length}명 선택됨
-                                </Text>
-                            )}
-                            
-                            <FlatList
-                                data={seniors}
-                                renderItem={renderSeniorItem}
-                                keyExtractor={(item) => item.id.toString()}
-                                scrollEnabled={false}
-                                className="mb-6"
-                            />
 
-                {/* 연결 버튼 */}
-                <TouchableOpacity
-                                className={`w-full h-12 bg-blue-500 rounded-xl justify-center items-center mt-5 ${
-                                    selectedSeniors.length === 0 || isConnecting ? 'bg-gray-400' : ''
-                                }`}
-                    onPress={handleConnect}
-                                disabled={selectedSeniors.length === 0 || isConnecting}
+                <View className="items-center mb-6">
+                    <Text className="text-4xl font-bold text-center mb-5" style={{ color: colors.darkGreen }}>
+                            시니어와 연결하기
+                        </Text>
+                    <Text className="text-lg text-center leading-6" style={{ color: colors.darkGreen }}>
+                            시니어의 이름과 전화번호를{'\n'}입력하여 검색할 수 있습니다.
+                        </Text>
+                    </View>
+
+                    {/* 검색 입력 */}
+                <View>
+                        <View 
+                        className="rounded-2xl p-5"
+                        >
+                            <TextInput
+                            className="border rounded-3xl px-6 py-4 mb-4 bg-white text-base"
+                                placeholder="이름을 입력하세요"
+                                value={searchName}
+                                onChangeText={setSearchName}
+                                onFocus={() => setNameFocused(true)}
+                                onBlur={() => setNameFocused(false)}
+                                keyboardType="default"
+                                style={{ 
+                                    fontSize: 16,
+                                    borderColor: nameFocused ? colors.green : '#D1D5DB',
+                                    borderWidth: nameFocused ? 2 : 1
+                                }}
+                            />
+                            <TextInput
+                            className="border rounded-3xl px-6 py-4 mb-4 bg-white text-base"
+                            placeholder="전화번호를 입력하세요"
+                                value={searchPhone}
+                                onChangeText={formatPhoneNumber}
+                                onFocus={() => setPhoneFocused(true)}
+                                onBlur={() => setPhoneFocused(false)}
+                                keyboardType="phone-pad"
+                                style={{ 
+                                    fontSize: 16,
+                                    borderColor: phoneFocused ? colors.green : '#D1D5DB',
+                                    borderWidth: phoneFocused ? 2 : 1
+                                }}
+                            />
+                        
+                        {/* 검색 결과 메시지 - 입력필드와 검색버튼 사이 */}
+                        {isSearching ? (
+                            <View className="items-center mb-4">
+                                <ActivityIndicator size="large" color={colors.green} />
+                            </View>
+                        ) : hasSearched && seniors.length === 0 ? (
+                            <Text className="text-center text-base mb-4" style={{ color: colors.darkGreen }}>
+                                입력하신 정보와 일치하는 시니어를 찾을 수 없습니다.{'\n'}이름과 전화번호를 다시 확인해주세요.
+                            </Text>
+                        ) : (
+                            <View className="mb-4" />
+                        )}
+                        
+                            <TouchableOpacity
+                            className="w-full h-12 rounded-xl justify-center items-center"
+                                onPress={handleSearch}
+                                disabled={isSearching || !searchName.trim() || !searchPhone.trim()}
+                                style={{
+                                    backgroundColor: (!searchName.trim() || !searchPhone.trim()) ? '#D1D5DB' : 'black'
+                                }}
                             >
-                                <Text className="text-white text-base font-semibold">
-                                    {isConnecting ? '연결 중...' : 
-                                     selectedSeniors.length === 0 ? '시니어를 선택해주세요' :
-                                     `선택한 ${selectedSeniors.length}명과 연결하기`}
+                            <Text className={`text-base font-bold ${(!searchName.trim() || !searchPhone.trim()) ? 'text-gray-500' : 'text-white'
+                                }`}>
+                                    {isSearching ? '검색 중...' : '검색'}
                                 </Text>
                             </TouchableOpacity>
-                        </>
-                    ) : (
-                        <View className="items-center py-8">
-                            <Text className="text-gray-600 text-center mb-4">
-                                카카오 친구 중 가입된 시니어를 찾을 수 없습니다.
-                            </Text>
-                            <TouchableOpacity
-                                className="w-full h-12 bg-blue-500 rounded-xl justify-center items-center mt-5"
-                                onPress={loadSeniors}
-                            >
-                                <Text className="text-white text-base font-semibold">
-                                    다시 검색하기
-                    </Text>
-                </TouchableOpacity>
                         </View>
-                    )}
+                    </View>
 
                 {/* 건너뛰기 버튼 */}
-                <TouchableOpacity
-                        className="w-full h-12 rounded-xl justify-center items-center mt-3 border border-gray-300 bg-white"
-                    onPress={handleSkip}
-                    disabled={isConnecting}
-                >
-                        <Text className="text-gray-600 text-base">
-                            나중에 연결하기
+                <View className="mt-4">
+                    <TouchableOpacity
+                        className="h-10 justify-center items-center"
+                        onPress={handleSkip}
+                        disabled={isConnecting}
+                        style={{ opacity: 0.6 }}
+                    >
+                        <Text className="text-sm text-gray-500 font-bold">
+                            나중에 할게요
                         </Text>
-                </TouchableOpacity>
-
-                {/* 도움말 */}
-                    <View className="mt-10">
-                        <Text className="text-lg font-semibold mb-4 text-gray-800">
-                            연결 후 할 수 있는 것
-                        </Text>
-                        <Text className="text-base text-gray-600 mb-2">
-                            • 시니어의 대화 기록 확인
-                        </Text>
-                        <Text className="text-base text-gray-600 mb-2">
-                            • 감정 분석 결과 모니터링
-                        </Text>
-                        <Text className="text-base text-gray-600 mb-2">
-                            • 진행 상황 추적
-                        </Text>
-                        <Text className="text-base text-gray-600 mb-2">
-                            • 알림 및 경고 수신
-                        </Text>
+                    </TouchableOpacity>
                 </View>
-            </View>
-        </ScrollView>
-        </LinearGradient>
+            </TouchableOpacity>
+        </KeyboardAvoidingView>
     );
 }

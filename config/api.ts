@@ -3,9 +3,9 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 //동적 ip 가져오는 함수
-const getDevServerIp = () => {
+export const getDevServerIp = () => {
   // Expo 54에서는 Constants.manifest 사용
-  const debuggerHost = Constants.manifest?.debuggerHost || Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  const debuggerHost = (Constants.manifest as any)?.debuggerHost || (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost;
   console.log('🔍 getDevServerIp debuggerHost:', debuggerHost);
   
   if (!debuggerHost) {
@@ -23,6 +23,7 @@ const isWeb = Platform.OS === 'web';
 
 
 // YOLO 감정 분석 API용 동적 IP 가져오는 함수
+// 현재 모바일에서는 로컬로 설정
 export const getYoloEmotionApiUrl = () => {
   if (isDevelopment) {
     if (isWeb) {
@@ -46,12 +47,21 @@ export const getKoBERTApiUrl = () => {
     if (isWeb) {
       return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV_WEB || 'http://localhost:8001';
     } else {
-      // 네이티브(Expo Go) 환경일 때 동적 ip 사용
+      // 네이티브(Expo Go) 환경일 때 환경변수 우선 확인
+      console.log('🔍 KoBERT 환경변수 확인:', process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV);
+      if (process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV) {
+        console.log('✅ 환경변수 사용:', process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV);
+        return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV;
+      }
+      
+      // 환경변수가 없으면 동적 ip 사용
       const devServerIp = getDevServerIp();
       if (devServerIp) {
-        return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV || `http://${devServerIp}:8001`;
+        console.log('🔄 동적 IP 사용:', `http://${devServerIp}:8001`);
+        return `http://${devServerIp}:8001`;
       }
-      return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV || 'http://emotion_kobert:8001';
+      console.log('⚠️ Fallback 사용: emotion_kobert:8001');
+      return 'http://emotion_kobert:8001';
     }
   } else {
     return process.env.EXPO_PUBLIC_KOBERT_API_URL_PROD || 'http://emotion_kobert:8001';
@@ -204,22 +214,34 @@ class ApiClient {
       if (Platform.OS === 'web') {
         // 웹에서는 localStorage 사용
         const userData = localStorage.getItem('user');
+        console.log('🔍 웹에서 토큰 가져오기 시도:', userData ? '데이터 있음' : '데이터 없음');
+        console.log('🔍 localStorage 전체 내용:', {
+          user: localStorage.getItem('user'),
+          userType: localStorage.getItem('userType'),
+          keys: Object.keys(localStorage)
+        });
         if (userData) {
           const user = JSON.parse(userData);
-          return user.token || null;
+          const token = user.token || null;
+          console.log('🔑 웹에서 토큰 상태:', { hasToken: !!token, tokenLength: token?.length || 0 });
+          return token;
         }
       } else {
         // React Native에서는 AsyncStorage 사용
-        const { getItem } = await import('@react-native-async-storage/async-storage');
-        const userData = await getItem('user');
+        const AsyncStorage = await import('@react-native-async-storage/async-storage');
+        const userData = await AsyncStorage.default.getItem('user');
+        console.log('🔍 네이티브에서 토큰 가져오기 시도:', userData ? '데이터 있음' : '데이터 없음');
         if (userData) {
           const user = JSON.parse(userData);
-          return user.token || null;
+          const token = user.token || null;
+          console.log('🔑 네이티브에서 토큰 상태:', { hasToken: !!token, tokenLength: token?.length || 0 });
+          return token;
         }
       }
     } catch (error) {
-      console.error('Failed to get token from storage:', error);
+      console.error('❌ Failed to get token from storage:', error);
     }
+    console.log('❌ 토큰을 가져올 수 없음');
     return null;
   }
 
@@ -235,12 +257,15 @@ class ApiClient {
       
       const headers: Record<string, string> = {
         ...this.defaultHeaders,
-        ...options.headers,
+        ...(options.headers as Record<string, string>),
       };
 
       // JWT 토큰이 있으면 Authorization 헤더에 추가
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+        console.log('🔑 API 요청에 JWT 토큰 포함:', endpoint);
+      } else {
+        console.log('❌ API 요청에 JWT 토큰 없음:', endpoint);
       }
 
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
