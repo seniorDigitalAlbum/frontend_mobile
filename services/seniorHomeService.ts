@@ -158,16 +158,12 @@ export class SeniorCoverPhotoService {
      */
     static async loadCoverPhotoInfo(): Promise<CoverPhotoInfo | null> {
         try {
-            console.log('🔍 AsyncStorage에서 표지 사진 정보 조회 중...');
             const storedInfo = await AsyncStorage.getItem('latestCoverPhoto');
-            console.log('🔍 저장된 원본 데이터:', storedInfo);
             
             if (storedInfo) {
                 const parsedInfo = JSON.parse(storedInfo);
-                console.log('✅ 표지 사진 정보 로드 성공:', parsedInfo);
+                console.log('📸 표지 사진 정보 로드 완료:', parsedInfo);
                 return parsedInfo;
-            } else {
-                console.log('❌ 저장된 표지 사진 정보 없음');
             }
             return null;
         } catch (error) {

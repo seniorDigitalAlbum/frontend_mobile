@@ -72,7 +72,8 @@ export const getKoBERTApiUrl = () => {
 export const API_BASE_URL = (() => {
   if (isDevelopment) {
     if (isWeb) {
-      return process.env.EXPO_PUBLIC_API_BASE_URL_DEV_WEB || 'http://localhost:8080';
+      // 웹에서는 무조건 localhost:8080 사용
+      return 'http://localhost:8080';
     } else {
       // 네이티브(Expo Go) 환경일 때 동적 ip get
       const devServerIp = getDevServerIp();
@@ -86,7 +87,7 @@ export const API_BASE_URL = (() => {
     }
   } else {
     // 프로덕션 환경
-    return process.env.EXPO_PUBLIC_API_BASE_URL_PROD || 'https://your-backend-domain.com';
+    return process.env.EXPO_PUBLIC_API_BASE_URL_PROD || 'https://dearmind-backend.onrender.com';
   }
 })();
 
@@ -284,11 +285,20 @@ class ApiClient {
               localStorage.removeItem('user');
               localStorage.removeItem('userType');
               console.log('🧹 모든 사용자 데이터 제거 완료');
+              
+              // 웹에서는 페이지 리로드하여 로그인 화면으로 이동
+              window.location.href = '/login';
             } else {
               // React Native에서는 AsyncStorage 사용 - 모든 사용자 데이터 제거
               const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
               await AsyncStorage.multiRemove(['user', 'userType']);
               console.log('🧹 모든 사용자 데이터 제거 완료');
+              
+              // React Native에서는 네비게이션을 통해 로그인 화면으로 이동
+              // 이는 전역 이벤트를 통해 처리됩니다
+              if (typeof window !== 'undefined' && window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent('auth:logout'));
+              }
             }
           } catch (cleanupError) {
             console.error('❌ 토큰 무효화 후 정리 실패:', cleanupError);

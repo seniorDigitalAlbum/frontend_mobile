@@ -8,7 +8,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../contexts/UserContext';
 import guardianService, { SeniorInfo } from '../services/guardianService';
 import albumApiService from '../services/api/albumApiService';
-import { TEST_SENIORS, convertToSeniorInfo } from '../mocks/SeniorMockData';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GuardianMain'>;
 
@@ -21,32 +20,48 @@ export default function GuardianMain({ navigation }: Props) {
 
 
     useEffect(() => {
+        // 사용자 인증 상태 확인
+        if (!user || !user.token) {
+            console.log('사용자 인증 정보 없음 - 로그인 화면으로 이동');
+            Alert.alert('인증 필요', '로그인이 필요합니다.', [
+                {
+                    text: '확인',
+                    onPress: () => navigation.navigate('Login' as any)
+                }
+            ]);
+            return;
+        }
+
         loadConnectedSeniors();
-    }, []);
+        
+        // 전역 로그아웃 이벤트 리스너 (React Native용)
+        const handleLogout = () => {
+            navigation.navigate('Login' as any);
+        };
+        
+        if (typeof window !== 'undefined') {
+            window.addEventListener('auth:logout', handleLogout);
+        }
+        
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('auth:logout', handleLogout);
+            }
+        };
+    }, [user]);
 
     const loadConnectedSeniors = async () => {
         if (!user?.id) return;
         
         setIsLoading(true);
         try {
-            console.log('연결된 시니어 목록 조회 시작');
+            console.log('시니어 목록 조회 시작');
             
             let seniors: SeniorInfo[] = [];
             
-            // 테스트 로그인인 경우 (test-jwt-token으로 시작하는 경우)
-            if (user?.token?.startsWith('test-jwt-token')) {
-                console.log('테스트 모드 - 테스트 시니어 목록 로드');
-                // 테스트 시니어들을 실제 DB ID와 매핑하여 표시
-                const testSeniors = [
-                    { ...TEST_SENIORS[2], id: 123 }    // 테스트 시니어 -> DB ID: 123 (test-user-123의 DB ID)
-                ].map(convertToSeniorInfo);
-                seniors = testSeniors;
-                console.log('테스트 연결된 시니어 수:', testSeniors.length);
-            } else {
-                // 실제 API 호출
-                seniors = await guardianService.getConnectedSeniors(parseInt(user.id));
-                console.log('연결된 시니어 수:', seniors.length);
-            }
+            // 실제 API 호출 - 모든 시니어 (승인 절차 없이 바로 연결)
+            seniors = await guardianService.getAllSeniors(parseInt(user.id));
+            console.log('전체 시니어 수:', seniors.length);
             
             setConnectedSeniors(seniors);
             
@@ -54,7 +69,23 @@ export default function GuardianMain({ navigation }: Props) {
             await loadSeniorCoverPhotos(seniors);
             
         } catch (error) {
-            console.error('연결된 시니어 목록 조회 실패:', error);
+            console.error('시니어 목록 조회 실패:', error);
+            
+            // 401 오류인 경우 로그인 화면으로 리다이렉트
+            if (error instanceof Error && error.message.includes('Full authentication is required')) {
+                Alert.alert(
+                    '세션 만료', 
+                    '로그인이 만료되었습니다. 다시 로그인해주세요.',
+                    [
+                        {
+                            text: '확인',
+                            onPress: () => navigation.navigate('Login' as any)
+                        }
+                    ]
+                );
+                return;
+            }
+            
             Alert.alert('오류', '시니어 목록을 불러올 수 없습니다.');
         } finally {
             setIsLoading(false);
@@ -67,8 +98,7 @@ export default function GuardianMain({ navigation }: Props) {
             const coverPhotos: {[key: string]: string} = {};
             
             for (const senior of seniors) {
-                // 테스트 시니어의 경우 test_user_123 형식으로 userId 생성
-                const userId = senior.id === 123 ? 'test_user_123' : `senior_${senior.id}`;
+                const userId = `senior_${senior.id}`;
                 const coverPhoto = await albumApiService.getSeniorCoverPhoto(userId);
                 if (coverPhoto) {
                     coverPhotos[senior.id.toString()] = coverPhoto;
@@ -89,24 +119,17 @@ export default function GuardianMain({ navigation }: Props) {
     };
 
     const handleAddSenior = () => {
-        // 테스트 로그인인 경우 테스트 화면으로 이동
-        if (user?.token?.startsWith('test-jwt-token')) {
-            navigation.navigate('GuardianConnectionTest');
-        } else {
-            navigation.navigate('GuardianConnection');
-        }
+        navigation.navigate('GuardianConnection');
     };
 
     const handleSeniorPress = (senior: SeniorInfo) => {
         console.log('시니어 선택:', senior.name);
-        // 시니어 앨범 목록으로 이동
         navigation.navigate('SeniorAlbumList', { seniorId: senior.id, seniorName: senior.name });
     };
 
     const renderSeniorItem = (senior: SeniorInfo) => {
         const coverPhoto = seniorCoverPhotos[senior.id.toString()];
-        const defaultImage = senior.id === 123 ? 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=300&fit=crop' :
-                           'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=300&fit=crop';
+        const defaultImage = 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=300&fit=crop';
         
         return (
             <TouchableOpacity
@@ -135,12 +158,6 @@ export default function GuardianMain({ navigation }: Props) {
                         <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent h-8" />
                     </View>
                     
-                    {/* 시니어 이름 */}
-                    <View className="p-4">
-                        <Text className="text-lg font-bold text-center text-black">
-                            {senior.name}
-                        </Text>
-                    </View>
                 </View>
             </TouchableOpacity>
         );
@@ -177,7 +194,7 @@ export default function GuardianMain({ navigation }: Props) {
                             시니어 앨범
                         </Text>
                         <Text className="text-lg" style={{ color: colors.darkGreen }}>
-                            {connectedSeniors.length}명의 시니어와 연결되어 있습니다
+                            {connectedSeniors.filter(s => s.connectionStatus === 'APPROVED').length}명의 시니어와 연결되어 있습니다
                         </Text>
                     </View>
 

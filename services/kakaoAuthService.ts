@@ -42,7 +42,14 @@ class KakaoAuthService {
     try {
       // isMobile과 clientIp를 쿼리 파라미터로 백엔드에 전달
       const params = new URLSearchParams();
-      if (!isWeb) {
+      if (isWeb) {
+        // 웹에서는 명시적으로 isMobile=false 전달
+        params.append('isMobile', 'false');
+        // 웹에서는 현재 도메인을 frontendUrl로 전달
+        const currentUrl = window.location.origin;
+        params.append('frontendUrl', currentUrl);
+      } else {
+        // 모바일에서는 isMobile=true 전달
         params.append('isMobile', 'true');
         const clientIp = getDevServerIp();
         if (clientIp) {

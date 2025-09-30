@@ -4,19 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import relationshipApiService from '../services/api/relationshipApiService';
 import { GuardianSeniorRelationship } from '../services/api/relationshipApiService';
 import { useUser } from '../contexts/UserContext';
-import { useWebSocket } from '../contexts/WebSocketContext';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { colors } from '../styles/commonStyles';
 
 export default function SeniorNotification() {
     const { settings } = useAccessibility();
     const { user } = useUser();
-    const { relationshipRequests, markNotificationAsRead } = useWebSocket();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    
-    // 웹소켓에서 받은 관계 요청 중 PENDING 상태인 것만 필터링
-    const pendingRelationships = relationshipRequests.filter(req => req.status === 'PENDING');
+    const [pendingRelationships, setPendingRelationships] = useState<GuardianSeniorRelationship[]>([]);
 
     useEffect(() => {
         loadPendingRelationships();
@@ -27,14 +23,9 @@ export default function SeniorNotification() {
         
         try {
             setLoading(true);
-            // 웹소켓에서 이미 데이터를 받고 있다면 API 호출 생략 가능
-            // 하지만 초기 로드나 웹소켓 연결 실패 시에는 API 호출 필요
-            if (relationshipRequests.length === 0) {
-                const relationships = await relationshipApiService.getPendingRelationships(parseInt(user.id));
-                console.log('API에서 대기 중인 관계 요청 로드 완료:', relationships.length);
-            } else {
-                console.log('웹소켓에서 이미 데이터를 받고 있음');
-            }
+            const relationships = await relationshipApiService.getPendingRelationships(parseInt(user.id));
+            console.log('API에서 대기 중인 관계 요청 로드 완료:', relationships.length);
+            setPendingRelationships(relationships);
         } catch (error) {
             console.error('대기 중인 관계 조회 실패:', error);
             Alert.alert('오류', '관계 요청을 불러올 수 없습니다.');
@@ -56,8 +47,8 @@ export default function SeniorNotification() {
             const result = await relationshipApiService.approveRelationship(relationshipId, parseInt(user.id));
             if (result.success) {
                 Alert.alert('성공', '연결이 승인되었습니다.');
-                // 관련 알림을 읽음으로 표시
-                markNotificationAsRead(relationshipId);
+                // 목록에서 제거
+                setPendingRelationships(prev => prev.filter(rel => rel.id !== relationshipId));
             } else {
                 Alert.alert('오류', result.message || '승인에 실패했습니다.');
             }
@@ -72,8 +63,8 @@ export default function SeniorNotification() {
             const result = await relationshipApiService.rejectRelationship(relationshipId);
             if (result.success) {
                 Alert.alert('완료', '연결 요청을 거부했습니다.');
-                // 관련 알림을 읽음으로 표시
-                markNotificationAsRead(relationshipId);
+                // 목록에서 제거
+                setPendingRelationships(prev => prev.filter(rel => rel.id !== relationshipId));
             } else {
                 Alert.alert('오류', result.message || '거부에 실패했습니다.');
             }

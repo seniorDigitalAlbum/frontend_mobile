@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useWebSocket } from '../contexts/WebSocketContext';
 import { useNavigation } from '@react-navigation/native';
 
 interface NotificationIconProps {
@@ -17,7 +16,6 @@ export default function NotificationIcon({
   className = "",
   style 
 }: NotificationIconProps) {
-  const { unreadCount } = useWebSocket();
   const navigation = useNavigation();
 
   const handlePress = () => {
@@ -32,24 +30,6 @@ export default function NotificationIcon({
       style={style}
     >
       <Ionicons name="notifications-outline" size={size} color={color} />
-      
-      {/* 읽지 않은 알림 개수 표시 */}
-      {unreadCount > 0 && (
-        <View
-          className="absolute -top-1 -right-1 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.2,
-            shadowRadius: 2,
-            elevation: 3,
-          }}
-        >
-          <Text className="text-white text-xs font-bold">
-            {unreadCount > 99 ? '99+' : unreadCount.toString()}
-          </Text>
-        </View>
-      )}
     </TouchableOpacity>
   );
 }

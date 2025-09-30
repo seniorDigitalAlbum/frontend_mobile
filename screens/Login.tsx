@@ -15,18 +15,80 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const { login: loginUser } = useUser();
 
-    // [웹 전용] 페이지 로드 시 URL에 토큰이 있으면 로그인 처리
+    // [웹 전용] 페이지 로드 시 URL에 토큰 또는 code가 있으면 로그인 처리
     useEffect(() => {
         if (isWeb) {
             const urlParams = new URLSearchParams(window.location.search);
             const token = urlParams.get('token');
+            const code = urlParams.get('code');
+            
             if (token) {
+                // 기존 방식: 토큰이 직접 전달된 경우
                 handleLoginSuccessWithToken(token);
                 // URL에서 토큰 파라미터 정리
+                window.history.replaceState({}, '', window.location.pathname);
+            } else if (code) {
+                // 새로운 방식: code로 토큰 교환
+                handleLoginWithCode(code);
+                // URL에서 code 파라미터 정리
                 window.history.replaceState({}, '', window.location.pathname);
             }
         }
     }, []);
+
+    // [웹 전용] code로 토큰 교환 후 로그인 처리
+    const handleLoginWithCode = async (code: string) => {
+        setIsLoading(true);
+        try {
+            const apiUrl = `${process.env.EXPO_PUBLIC_API_BASE_URL_DEV_WEB}/api/auth/kakao/exchange-token`;
+            console.log('🔍 API URL:', apiUrl);
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `code=${encodeURIComponent(code)}`
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || '토큰 교환에 실패했습니다.');
+            }
+
+            const data = await response.json();
+            const token = data.token;
+            
+            if (!token) {
+                throw new Error('토큰을 받아올 수 없습니다.');
+            }
+
+            // API에서 직접 받은 사용자 정보 사용
+            const userData = {
+                id: data.userId,
+                userId: data.userId,
+                name: data.nickname || '사용자',
+                phone: data.phoneNumber || '',
+                userType: data.userType ? (data.userType as UserType) : null,
+                profileImage: data.profileImageUrl || '',
+                token: token,
+                gender: data.gender || ''
+            };
+            
+            await loginUser(userData);
+
+            const hasValidUserType = userData.userType && (userData.userType === UserType.SENIOR || userData.userType === UserType.GUARDIAN);
+            if (hasValidUserType) {
+                navigation.navigate(userData.userType === UserType.SENIOR ? 'MainTabs' : 'GuardianConnection');
+            } else {
+                navigation.navigate('UserRoleSelection');
+            }
+        } catch (error: any) {
+            console.error('code로 로그인 실패:', error);
+            Alert.alert('오류', error.message || '로그인 처리 중 오류가 발생했습니다.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // [공통] 최종적으로 토큰을 받아 로그인 상태를 만들고 화면 이동
     const handleLoginSuccessWithToken = async (token: string) => {
@@ -55,7 +117,7 @@ export default function Login() {
 
             const hasValidUserType = userData.userType && (userData.userType === UserType.SENIOR || userData.userType === UserType.GUARDIAN);
             if (hasValidUserType) {
-                navigation.navigate(userData.userType === UserType.SENIOR ? 'MainTabs' : 'GuardianMain');
+                navigation.navigate(userData.userType === UserType.SENIOR ? 'MainTabs' : 'GuardianConnection');
             } else {
                 navigation.navigate('UserRoleSelection');
             }

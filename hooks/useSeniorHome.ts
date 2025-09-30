@@ -45,9 +45,7 @@ export const useSeniorHome = (): UseSeniorHomeReturn => {
 
     // 표지 사진 정보 로드
     const loadCoverPhotoInfo = useCallback(async () => {
-        console.log('🔄 표지 사진 정보 로드 시작');
         const info = await SeniorCoverPhotoService.loadCoverPhotoInfo();
-        console.log('📸 표지 사진 정보 로드 완료:', info);
         setCoverPhotoInfo(info);
     }, []);
 

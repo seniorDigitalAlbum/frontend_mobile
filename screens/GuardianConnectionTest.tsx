@@ -6,7 +6,6 @@ import { blueGradientColors, colors, purpleGradientColors } from '../styles/comm
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../contexts/UserContext';
 import { SeniorInfo } from '../services/guardianService';
-import { TEST_SENIORS, convertToSeniorInfo } from '../mocks/SeniorMockData';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GuardianConnectionTest'>;
 
@@ -29,7 +28,22 @@ export default function GuardianConnectionTest({ navigation }: Props) {
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // 테스트 시니어 데이터 로드
-            const testSeniors = TEST_SENIORS.map(convertToSeniorInfo);
+            const testSeniors: SeniorInfo[] = [
+                {
+                    id: 1,
+                    name: '김할머니',
+                    phoneNumber: '010-1234-5678',
+                    profileImage: '',
+                    connectionStatus: 'PENDING'
+                },
+                {
+                    id: 2,
+                    name: '이할아버지',
+                    phoneNumber: '010-9876-5432',
+                    profileImage: '',
+                    connectionStatus: 'PENDING'
+                }
+            ];
             setSeniors(testSeniors);
             
             console.log('검색된 시니어 수:', testSeniors.length);

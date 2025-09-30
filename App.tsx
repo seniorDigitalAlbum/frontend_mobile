@@ -22,7 +22,6 @@ import { DiaryProvider } from './contexts/DiaryContext';
 import { ConversationProvider } from './contexts/ConversationContext';
 import { AccessibilityProvider, useAccessibility } from './contexts/AccessibilityContext';
 import { UserProvider, useUser, UserType } from './contexts/UserContext';
-import { WebSocketProvider } from './contexts/WebSocketContext';
 import GlobalAccessibilityWrapper from './components/GlobalAccessibilityWrapper';
 import { colors } from './styles/commonStyles';
 import './global.css';
@@ -627,13 +626,11 @@ export default function App() {
       <AccessibilityProvider>
         <GlobalAccessibilityWrapper>
           <UserProvider>
-            <WebSocketProvider>
-              <DiaryProvider>
-                <ConversationProvider>
-                  <AppNavigator />
-                </ConversationProvider>
-              </DiaryProvider>
-            </WebSocketProvider>
+            <DiaryProvider>
+              <ConversationProvider>
+                <AppNavigator />
+              </ConversationProvider>
+            </DiaryProvider>
           </UserProvider>
         </GlobalAccessibilityWrapper>
       </AccessibilityProvider>

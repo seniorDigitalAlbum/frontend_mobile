@@ -190,18 +190,23 @@ export default function GuardianConnection({ navigation }: Props) {
     };
 
     const handleConnect = async () => {
-        if (selectedSeniors.length === 0) {
-            Alert.alert('오류', '연결할 시니어를 선택해주세요.');
+        // selectedSeniors가 비어있으면 모든 시니어를 자동으로 선택
+        const seniorsToConnect = selectedSeniors.length > 0 ? selectedSeniors : seniors;
+        
+        if (seniorsToConnect.length === 0) {
+            Alert.alert('오류', '연결할 시니어가 없습니다.');
             return;
         }
+        
+        console.log('🔗 연결할 시니어:', seniorsToConnect.map(s => s.name));
 
         setIsConnecting(true);
         try {
-            console.log('시니어 연결 시작:', selectedSeniors.map(s => s.name));
+            console.log('시니어 연결 시작:', seniorsToConnect.map(s => s.name));
             
             // 선택된 모든 시니어와 연결
             const results = await Promise.all(
-                selectedSeniors.map(senior => 
+                seniorsToConnect.map(senior => 
                     guardianService.connectSenior(
                         parseInt(user?.id || '0'), 
                         senior.id
@@ -211,7 +216,7 @@ export default function GuardianConnection({ navigation }: Props) {
 
             const successCount = results.filter(r => r.success).length;
             
-            if (successCount === selectedSeniors.length) {
+            if (successCount === seniorsToConnect.length) {
                 console.log('모든 시니어 연결 완료');
                 
                 // 보호자 역할 업데이트
@@ -227,7 +232,7 @@ export default function GuardianConnection({ navigation }: Props) {
                 // 부분 성공이어도 보호자 역할 업데이트
                 await updateUser({ userType: UserType.GUARDIAN });
                 
-                Alert.alert('부분 성공', `${successCount}명 연결 성공, ${selectedSeniors.length - successCount}명 연결 실패`, [
+                Alert.alert('부분 성공', `${successCount}명 연결 성공, ${seniorsToConnect.length - successCount}명 연결 실패`, [
                     {
                         text: '확인',
                         onPress: () => navigation.navigate('GuardianMain')
@@ -261,14 +266,21 @@ export default function GuardianConnection({ navigation }: Props) {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
             <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
-            <TouchableOpacity 
+            <View 
                 className="flex-1 flex-col px-6 py-0 justify-center gap-8"
-                activeOpacity={1}
-                onPress={Keyboard.dismiss}
             >
                     {/* 헤더 섹션 */}
                 <View className="items-center">
-                    <Image source={require('../assets/Phone.png')} className="w-full h-40 mt-10" resizeMode="contain" />
+                    <Image 
+                        source={require('../assets/Phone.png')} 
+                        className="w-full h-40 mt-10" 
+                        resizeMode="contain"
+                        style={{ 
+                            width: 200, 
+                            height: 160, 
+                            maxWidth: '100%' 
+                        }} 
+                    />
                 </View>
 
                 <View className="items-center mb-6">
@@ -293,10 +305,19 @@ export default function GuardianConnection({ navigation }: Props) {
                                 onFocus={() => setNameFocused(true)}
                                 onBlur={() => setNameFocused(false)}
                                 keyboardType="default"
+                                editable={true}
+                                selectTextOnFocus={true}
                                 style={{ 
                                     fontSize: 16,
                                     borderColor: nameFocused ? colors.green : '#D1D5DB',
-                                    borderWidth: nameFocused ? 2 : 1
+                                    borderWidth: nameFocused ? 2 : 1,
+                                    ...(Platform.OS === 'web' && {
+                                        outline: 'none',
+                                        WebkitAppearance: 'none',
+                                        MozAppearance: 'textfield',
+                                        cursor: 'text',
+                                        pointerEvents: 'auto'
+                                    })
                                 }}
                             />
                             <TextInput
@@ -307,10 +328,19 @@ export default function GuardianConnection({ navigation }: Props) {
                                 onFocus={() => setPhoneFocused(true)}
                                 onBlur={() => setPhoneFocused(false)}
                                 keyboardType="phone-pad"
+                                editable={true}
+                                selectTextOnFocus={true}
                                 style={{ 
                                     fontSize: 16,
                                     borderColor: phoneFocused ? colors.green : '#D1D5DB',
-                                    borderWidth: phoneFocused ? 2 : 1
+                                    borderWidth: phoneFocused ? 2 : 1,
+                                    ...(Platform.OS === 'web' && {
+                                        outline: 'none',
+                                        WebkitAppearance: 'none',
+                                        MozAppearance: 'textfield',
+                                        cursor: 'text',
+                                        pointerEvents: 'auto'
+                                    })
                                 }}
                             />
                         
@@ -356,7 +386,7 @@ export default function GuardianConnection({ navigation }: Props) {
                         </Text>
                     </TouchableOpacity>
                 </View>
-            </TouchableOpacity>
+            </View>
         </KeyboardAvoidingView>
     );
 }

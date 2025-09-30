@@ -27,7 +27,7 @@ export const useUserRoleSelection = ({ route, navigation }: UseUserRoleSelection
         }
     }, [code, token, fromDeepLink]);
 
-    // userType이 이미 있는 경우 해당 홈으로 이동
+    // userType이 이미 있는 경우 해당 홈으로 이동 (시니어만 자동 이동)
     useEffect(() => {
         if (user?.userType) {
             // userType이 유효한 경우에만 홈으로 이동
@@ -37,11 +37,11 @@ export const useUserRoleSelection = ({ route, navigation }: UseUserRoleSelection
             
             if (hasValidUserType) {
                 console.log('✅ 이미 userType이 설정됨:', user.userType);
-                if (user.userType === UserType.GUARDIAN) {
-                    navigation.navigate('GuardianMain');
-                } else if (user.userType === UserType.SENIOR) {
+                if (user.userType === UserType.SENIOR) {
+                    // 시니어만 자동으로 메인으로 이동
                     navigation.navigate('MainTabs');
                 }
+                // 보호자는 자동으로 이동하지 않음 (역할 선택 화면에서 수동으로 연결 화면으로 이동)
             } else {
                 console.log('🆕 userType이 유효하지 않음 - 역할 선택 화면 유지');
             }
@@ -137,14 +137,15 @@ export const useUserRoleSelection = ({ route, navigation }: UseUserRoleSelection
                     return;
                 }
                 
-                // 시니어는 바로 역할 업데이트하고 홈으로 이동
-                if (selectedUserType === UserType.SENIOR) {
-                    await updateUser({ userType: selectedUserType });
-                    navigation.navigate('MainTabs');
-                } else if (selectedUserType === UserType.GUARDIAN) {
-                    // 보호자는 역할 업데이트 없이 연결 화면으로 이동
-                    navigation.navigate('GuardianConnection');
-                }
+                // 시니어와 보호자 모두 역할 업데이트
+                await updateUser({ userType: selectedUserType });
+                
+                   if (selectedUserType === UserType.SENIOR) {
+                       navigation.navigate('MainTabs');
+                   } else if (selectedUserType === UserType.GUARDIAN) {
+                       // 보호자는 연결 화면으로 이동
+                       navigation.navigate('GuardianConnection');
+                   }
                 return;
             }
             
