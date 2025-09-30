@@ -9,8 +9,8 @@ export const getDevServerIp = () => {
   console.log('🔍 getDevServerIp debuggerHost:', debuggerHost);
   
   if (!debuggerHost) {
-    console.log('🔍 debuggerHost가 없음, 172.21.255.132 사용');
-    return '172.21.255.132'; // 하드코딩된 IP 사용
+    console.log('🔍 debuggerHost가 없음, 172.30.1.81 사용');
+    return '172.30.1.81'; // 하드코딩된 IP 사용
   }
   // 포트 번호 제외
   const ip = debuggerHost.split(':')[0];

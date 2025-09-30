@@ -46,8 +46,15 @@ class KakaoAuthService {
         // 웹에서는 명시적으로 isMobile=false 전달
         params.append('isMobile', 'false');
         // 웹에서는 현재 도메인을 frontendUrl로 전달
-        //const currentUrl = window.location.origin;
-        const currentUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+        // 로컬 개발환경과 배포환경 구분
+        const isDevelopment = __DEV__;
+        let currentUrl = window.location.origin;
+        
+        if (!isDevelopment) {
+          // 배포환경에서는 /frontend_mobile 경로 제거
+          currentUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+        }
+        
         params.append('frontendUrl', currentUrl);
       } else {
         // 모바일에서는 isMobile=true 전달

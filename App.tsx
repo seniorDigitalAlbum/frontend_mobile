@@ -466,7 +466,6 @@ function AppNavigator() {
       
       if (url.startsWith('dearmind://kakao-auth')) {
         const urlParams = new URLSearchParams(url.split('?')[1]);
-        const code = urlParams.get('code');
         const token = urlParams.get('token');
         const error = urlParams.get('error');
         
@@ -476,11 +475,10 @@ function AppNavigator() {
           return;
         }
         
-        if (code && token) {
-          console.log('카카오 콜백 코드와 토큰:', code, token);
+        if (token) {
+          console.log('카카오 콜백 토큰:', token);
           // UserRoleSelection 화면으로 직접 이동
           navigationRef.current?.navigate('UserRoleSelection' as any, { 
-            code, 
             token,
             fromDeepLink: true 
           });
