@@ -5,6 +5,7 @@
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>DearMind</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https:;" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -77,8 +78,20 @@
             },
         }
         
-        // React Native Web 폰트 로딩 완전 차단
+        // React Native Web 폰트 로딩 및 SVG 오류 처리
         (function() {
+            // SVG path 오류 방지
+            const originalConsoleError = console.error;
+            console.error = function(...args) {
+                const message = args.join(' ');
+                if (message.includes('attribute d: Expected number') || 
+                    message.includes('jquery-3.4.1.min.js') ||
+                    message.includes('SVG path')) {
+                    return; // SVG 관련 오류 무시
+                }
+                originalConsoleError.apply(console, args);
+            };
+            
             // 폰트 로딩 차단
             const originalCreateElement = document.createElement;
             document.createElement = function(tagName) {

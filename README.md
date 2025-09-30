@@ -2,6 +2,97 @@
 
 React Native Expo 앱의 웹 버전입니다. 시니어 사용자를 위한 고급 접근성 기능이 포함되어 있습니다.
 
+## 프로젝트 구조
+
+```
+frontend_mobile/
+├── App.tsx                          # 앱 진입점
+├── package.json                     # 의존성 관리
+├── tsconfig.json                    # TypeScript 설정
+├── tailwind.config.js               # Tailwind CSS 설정
+├── app.json                         # Expo 앱 설정
+├── eas.json                         # EAS 빌드 설정
+├── babel.config.js                  # Babel 설정
+├── metro.config.js                  # Metro 번들러 설정
+├── postcss.config.js                # PostCSS 설정
+├── global.css                       # 전역 스타일
+├── README.md                        # 프로젝트 문서
+├── ACCESSIBILITY_GUIDE.md           # 접근성 가이드
+│
+├── components/                      # 재사용 가능한 UI 컴포넌트
+│   ├── AICharacter.tsx              # AI 캐릭터 컴포넌트
+│   ├── AlbumCard.tsx                # 앨범 카드
+│   ├── AlbumHero.tsx                # 앨범 히어로 섹션
+│   ├── AlbumView.tsx                # 앨범 뷰어
+│   ├── ChatBallon.tsx               # 채팅 말풍선
+│   ├── ConversationFlow.tsx         # 대화 플로우
+│   ├── AnswerMic.tsx                # 음성 답변 버튼
+│   ├── GuardianDashboard.tsx        # 보호자 대시보드
+│   ├── UserTypeSelector.tsx         # 사용자 타입 선택
+│   ├── AccessibilityWrapper.tsx     # 접근성 래퍼
+│   └── ...                          # 기타 UI 컴포넌트들
+│
+├── screens/                         # 화면 컴포넌트
+│   ├── Home.tsx                     # 메인 홈 화면
+│   ├── Chat.tsx                     # 채팅 화면
+│   ├── Conversation.tsx             # 대화 화면
+│   ├── Album.tsx                    # 앨범 목록
+│   ├── AlbumDetail.tsx              # 앨범 상세
+│   ├── Login.tsx                    # 로그인 화면
+│   ├── KakaoConnection.tsx          # 카카오 연동
+│   ├── GuardianMain.tsx             # 보호자 메인
+│   ├── DiaryResult.tsx              # 일기 결과
+│   └── ...                          # 기타 화면들
+│
+├── services/                        # 비즈니스 로직 서비스
+│   ├── api/                         # API 통신
+│   ├── audio/                       # 오디오 처리
+│   ├── cameraService.ts             # 카메라 서비스
+│   ├── conversationService.ts       # 대화 관리
+│   ├── diaryService.ts              # 일기 기능
+│   ├── emotionService.ts            # 감정 분석
+│   ├── faceDetectionService.ts      # 얼굴 감지
+│   ├── faceRecognitionService.ts    # 얼굴 인식
+│   ├── firebaseAuthService.ts       # Firebase 인증
+│   ├── kakaoAuthService.ts          # 카카오 인증
+│   ├── guardianService.ts           # 보호자 기능
+│   ├── notificationService.ts       # 알림 서비스
+│   └── ...                          # 기타 서비스들
+│
+├── contexts/                        # React Context 상태 관리
+│   ├── UserContext.tsx              # 사용자 상태
+│   ├── ConversationContext.tsx      # 대화 상태
+│   ├── DiaryContext.tsx             # 일기 상태
+│   └── AccessibilityContext.tsx     # 접근성 설정
+│
+├── hooks/                           # 커스텀 훅
+│   ├── useConversation.ts           # 대화 관련 훅
+│   ├── useCameraTest.ts             # 카메라 테스트
+│   ├── useMicrophoneTest.ts         # 마이크 테스트
+│   ├── useAccessibilityStyles.ts    # 접근성 스타일
+│   └── ...                          # 기타 커스텀 훅들
+│
+├── types/                           # TypeScript 타입 정의
+│   ├── conversation.ts              # 대화 관련 타입
+│   ├── profile.ts                   # 프로필 타입
+│   ├── question.ts                  # 질문 타입
+│   └── notification.ts              # 알림 타입
+│
+├── utils/                           # 유틸리티 함수
+│   ├── cameraUtils.ts               # 카메라 유틸리티
+│   ├── conversationUtils.ts         # 대화 유틸리티
+│   ├── microphoneTestUtils.ts       # 마이크 테스트
+│   └── userUtils.ts                 # 사용자 유틸리티
+│
+├── styles/                          # 스타일 관련 파일
+├── assets/                          # 이미지, 폰트 등 정적 자원
+├── mocks/                           # 테스트용 목 데이터
+├── config/                          # 설정 파일들
+├── constants/                       # 상수 정의
+├── web/                             # 웹 빌드 결과물
+└── dist/                            # 배포용 빌드 결과물
+```
+
 ## 🌟 주요 기능
 
 ### 시니어 접근성 기능

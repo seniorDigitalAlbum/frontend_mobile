@@ -47,6 +47,8 @@ jobs:
         run: |
           sed -i 's|/_expo/static/|/frontend_mobile/_expo/static/|g' dist/index.html
           sed -i 's|/favicon.ico|/frontend_mobile/favicon.ico|g' dist/index.html
+          # CSP 정책 업데이트
+          sed -i 's|default-src '\''self'\''; script-src '\''self'\'' '\''unsafe-inline'\'' '\''unsafe-eval'\''; style-src '\''self'\'' '\''unsafe-inline'\'' https://fonts.googleapis.com; font-src '\''self'\'' https://fonts.gstatic.com; img-src '\''self'\'' data: https:; connect-src '\''self'\'' https:;|default-src '\''self'\''; script-src '\''self'\'' '\''unsafe-inline'\'' '\''unsafe-eval'\'' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; style-src '\''self'\'' '\''unsafe-inline'\'' https://fonts.googleapis.com https://cdn.jsdelivr.net; style-src-elem '\''self'\'' '\''unsafe-inline'\'' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src '\''self'\'' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src '\''self'\'' data: https:; connect-src '\''self'\'' https:;|g' dist/index.html
           # 에셋 경로 수정 (Linux 명령어)
           find dist -name "*.js" -exec sed -i 's|/assets/|/frontend_mobile/assets/|g' {} \;
           find dist -name "*.css" -exec sed -i 's|/assets/|/frontend_mobile/assets/|g' {} \;
