@@ -70,25 +70,34 @@ export const getKoBERTApiUrl = () => {
 
 
 export const API_BASE_URL = (() => {
+  let url: string;
+  
   if (isDevelopment) {
     if (isWeb) {
       // 웹 개발 환경에서는 환경변수 우선 확인
-      return process.env.EXPO_PUBLIC_API_BASE_URL_DEV_WEB || 'http://localhost:8080';
+      url = process.env.EXPO_PUBLIC_API_BASE_URL_DEV_WEB || 'http://localhost:8080';
     } else {
       // 네이티브(Expo Go) 환경일 때 동적 ip get
       const devServerIp = getDevServerIp();
       
       if (devServerIp) {
-        return `http://${devServerIp}:8080`;
+        url = `http://${devServerIp}:8080`;
+      } else {
+        // 실패 시 fall back
+        url = process.env.EXPO_PUBLIC_API_BASE_URL_DEV || 'http://172.30.1.81:8080';
       }
-      
-      // 실패 시 fall back
-      return process.env.EXPO_PUBLIC_API_BASE_URL_DEV || 'http://172.30.1.81:8080';
     }
   } else {
     // 프로덕션 환경
-    return process.env.EXPO_PUBLIC_API_BASE_URL_PROD || 'https://dearmind-backend.onrender.com';
+    url = process.env.EXPO_PUBLIC_API_BASE_URL_PROD || 'https://dearmind-backend-837765001467.asia-northeast3.run.app';
   }
+  
+  console.log('🔗 API_BASE_URL:', url);
+  console.log('🔗 isDevelopment:', isDevelopment);
+  console.log('🔗 isWeb:', isWeb);
+  console.log('🔗 EXPO_PUBLIC_API_BASE_URL_PROD:', process.env.EXPO_PUBLIC_API_BASE_URL_PROD);
+  
+  return url;
 })();
 
 // API 엔드포인트
