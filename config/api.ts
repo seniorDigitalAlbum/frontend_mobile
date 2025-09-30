@@ -72,8 +72,8 @@ export const getKoBERTApiUrl = () => {
 export const API_BASE_URL = (() => {
   if (isDevelopment) {
     if (isWeb) {
-      // 웹에서는 무조건 localhost:8080 사용
-      return 'http://localhost:8080';
+      // 웹 개발 환경에서는 환경변수 우선 확인
+      return process.env.EXPO_PUBLIC_API_BASE_URL_DEV_WEB || 'http://localhost:8080';
     } else {
       // 네이티브(Expo Go) 환경일 때 동적 ip get
       const devServerIp = getDevServerIp();
