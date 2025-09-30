@@ -1,4 +1,4 @@
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, Linking, TextInput, FlatList, Alert } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, Linking, TextInput, FlatList, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
@@ -19,9 +19,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DiaryResult'>;
 
 export default function DiaryResult({ route }: Props) {
     const { settings } = useAccessibility();
-    const { 
-        diary, 
-        conversationId, 
+    const {
+        diary,
+        conversationId,
         finalEmotion = '기쁨',
         userId: routeUserId = "1", // route.params에서 받은 userId (fallback: "1")
         musicRecommendations = []
@@ -29,10 +29,10 @@ export default function DiaryResult({ route }: Props) {
     const { addDiary, updateDiary, removeDiary } = useDiary();
     const { user } = useUser();
     const navigation = useNavigation();
-    
+
     // UserContext에서 실제 사용자 ID 가져오기 (route.params보다 우선)
     const userId = user?.userId || routeUserId;
-    
+
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [diaryData, setDiaryData] = useState<any>(null);
@@ -82,9 +82,23 @@ export default function DiaryResult({ route }: Props) {
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
+    // 감정에 따른 YouTube Embed URL 매핑 (자동재생 포함)
+    const getEmotionVideoUrl = (emotion: string) => {
+        const videoMap: Record<string, string> = {
+            '기쁨': 'https://www.youtube.com/embed/WvP1g7eic0U?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+            '슬픔': 'https://www.youtube.com/embed/72IuThAlcII?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+            '분노': 'https://www.youtube.com/embed/J-RSBdXwZFE?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+            '불안': 'https://www.youtube.com/embed/pAMl_bWWZnA?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+            '당황': 'https://www.youtube.com/embed/Lj-L6-O62RA?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+            '상처': 'https://www.youtube.com/embed/vnzyC8Lwtik?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+        };
+        return videoMap[emotion] || 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0'; // 기본값
+    };
+
     // YouTube 임베드 URL 생성 함수
-    const getYouTubeEmbedUrl = (videoId: string) => {
-        return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1`;
+    const getYouTubeEmbedUrl = (videoUrl: string) => {
+        const videoId = extractYouTubeId(videoUrl);
+        return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0`;
     };
 
     // 음악 자동 재생
@@ -96,7 +110,7 @@ export default function DiaryResult({ route }: Props) {
                     // 첫 번째 추천 음악 재생
                     const firstMusic = musicList[0];
                     console.log('배경음악 재생 시작:', firstMusic.title);
-                    
+
                     // 오디오 모드 설정
                     await Audio.setAudioModeAsync({
                         allowsRecordingIOS: false,
@@ -105,10 +119,10 @@ export default function DiaryResult({ route }: Props) {
                         shouldDuckAndroid: true,
                         playThroughEarpieceAndroid: false,
                     });
-                    
+
                     console.log('음악 재생 준비 완료:', firstMusic.youtubeLink);
                     setIsPlaying(true);
-                    
+
                 } catch (error) {
                     console.error('배경음악 재생 실패:', error);
                 }
@@ -163,10 +177,10 @@ export default function DiaryResult({ route }: Props) {
         }
 
         const lines = diaryContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-        
+
         // "제목:" 패턴 찾기
         const titleIndex = lines.findIndex(line => line.startsWith('제목:'));
-        
+
         if (titleIndex !== -1) {
             // 제목이 있는 경우
             const title = lines[titleIndex].replace(/^제목:\s*/, '').trim();
@@ -207,7 +221,7 @@ export default function DiaryResult({ route }: Props) {
         try {
             const diaryContent = diaryData?.diary || diary;
             const emotion = finalEmotion; // 백엔드에서 emotionSummary가 제거됨
-            
+
             if (!conversationId) {
                 throw new Error('대화 ID가 없습니다');
             }
@@ -232,9 +246,9 @@ export default function DiaryResult({ route }: Props) {
             navigation.reset({
                 index: 0,
                 routes: [
-                    { 
+                    {
                         name: 'MainTabs' as never,
-                        params: { 
+                        params: {
                             screen: 'Album' as never,
                         }
                     }
@@ -278,16 +292,16 @@ export default function DiaryResult({ route }: Props) {
     const backgroundColor = getEmotionBackgroundColor(currentEmotion);
 
     return (
-        <SafeAreaView 
+        <SafeAreaView
             className={`flex-1 ${settings.isHighContrastMode ? 'bg-black' : ''}`}
             style={!settings.isHighContrastMode ? { backgroundColor: backgroundColor } : {}}
         >
-            <ScrollView className="flex-1">
+            <ScrollView className="flex-1 p-5">
                 {/* 상단 감정 이미지 */}
                 <View className={`items-center ${settings.isLargeTextMode ? 'pt-20 pb-12' : 'pt-16 pb-10'}`}>
                     <View className={`${settings.isLargeTextMode ? 'w-32 h-32' : 'w-28 h-28'} bg-white rounded-full justify-center items-center mb-6 shadow-lg`}>
-                        <Image 
-                            source={getEmotionImage(displayData.emotionSummary?.dominantEmotion || finalEmotion)} 
+                        <Image
+                            source={getEmotionImage(displayData.emotionSummary?.dominantEmotion || finalEmotion)}
                             style={{
                                 width: settings.isLargeTextMode ? 80 : 64,
                                 height: settings.isLargeTextMode ? 80 : 64,
@@ -300,17 +314,38 @@ export default function DiaryResult({ route }: Props) {
                 {/* 제목 */}
                 <View className={`items-center ${settings.isLargeTextMode ? 'mb-8' : 'mb-6'}`}>
                     <Text className={`font-bold ${settings.isLargeTextMode ? 'text-4xl' : 'text-3xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                        이 대화를 할 때 {getEmotionDescription(displayData.emotionSummary?.dominantEmotion || finalEmotion)} 보였어요.
+                        이 대화를 할 때{'\n'}{getEmotionDescription(displayData.emotionSummary?.dominantEmotion || finalEmotion)} 보였어요.
                     </Text>
                 </View>
+                <View className="items-center py-8 px-5">
+                    <Text className={`font-bold mb-2 ${settings.isLargeTextMode ? 'text-xl' : 'text-lg'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
+                        음악이 재생 중입니다
+                    </Text>
 
+                    {/* 로딩 바 */}
+                    <View className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                        <View
+                            className="bg-gradient-to-r from-pink-400 to-purple-500 h-2 rounded-full"
+                            style={{
+                                width: '100%',
+                                animation: 'pulse 2s ease-in-out infinite'
+                            }}
+                        />
+                    </View>
+
+                    <View className="flex-row items-center space-x-2">
+                        <View className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
+                        <View className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                        <View className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                    </View>
+                </View>
                 {/* 일기 내용 */}
                 <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
                     <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
                         {(() => {
                             const diaryContent = displayData.diary || diary;
                             const { title, content } = separateTitleAndContent(diaryContent);
-                            
+
                             return (
                                 <>
                                     {/* 일기 제목 표시 */}
@@ -330,22 +365,32 @@ export default function DiaryResult({ route }: Props) {
                 {/* YouTube 음악 플레이어 */}
                 {displayData.musicRecommendations.length > 0 && (
                     <View className={`${settings.isLargeTextMode ? 'px-8 mb-10' : 'px-6 mb-8'}`}>
-                        <View style={[commonStyles.cardStyle, { padding: settings.isLargeTextMode ? 32 : 24 }]}>
-                            <Text className={`font-semibold mb-4 ${settings.isLargeTextMode ? 'text-2xl' : 'text-xl'} ${settings.isHighContrastMode ? 'text-white' : 'text-gray-800'}`}>
-                                🎵 추천 음악
-                            </Text>
-                            <WebView
-                                style={{ height: 200, width: '100%' }}
-                                source={{ 
-                                    uri: getYouTubeEmbedUrl('bKSGV2VPmIs')
-                                }}
-                                allowsInlineMediaPlayback={true}
-                                mediaPlaybackRequiresUserAction={false}
-                                onError={(error) => console.error('YouTube 플레이어 오류:', error)}
-                                onLoad={() => console.log('YouTube 플레이어 로드 완료')}
-                            />
+
+                            {/* 숨겨진 YouTube 플레이어 */}
+                            <View style={{ position: 'absolute', left: -9999, top: -9999, width: 1, height: 1, opacity: 0 }}>
+                                {Platform.OS === 'web' ? (
+                                    <iframe
+                                        width="1"
+                                        height="1"
+                                        src={getEmotionVideoUrl(currentEmotion)}
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                    />
+                                ) : (
+                                    <WebView
+                                        style={{ width: 1, height: 1 }}
+                                        source={{ 
+                                            uri: getEmotionVideoUrl(currentEmotion)
+                                        }}
+                                        allowsInlineMediaPlayback={true}
+                                        mediaPlaybackRequiresUserAction={false}
+                                        onError={(error) => console.error('YouTube 플레이어 오류:', error)}
+                                        onLoad={() => console.log('YouTube 플레이어 로드 완료')}
+                                    />
+                                )}
+                            </View>
                         </View>
-                    </View>
                 )}
 
                 {/* 버튼들 */}
@@ -356,8 +401,8 @@ export default function DiaryResult({ route }: Props) {
                         className={`w-full items-center ${settings.isLargeTextMode ? 'py-6' : 'py-4'}`}
                         activeOpacity={0.8}
                         style={[
-                            commonStyles.cardStyle, 
-                            { 
+                            commonStyles.cardStyle,
+                            {
                                 backgroundColor: '#E5E5E5',
                                 shadowColor: '#000',
                                 shadowOffset: { width: 0, height: 2 },

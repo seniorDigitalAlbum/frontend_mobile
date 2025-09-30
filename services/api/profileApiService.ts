@@ -1,27 +1,15 @@
 import { Profile, ProfileResponse, ProfileApiError } from '../../types/profile';
-import { getApiConfig, API_ENDPOINTS } from '../../config/api';
-
-const apiConfig = getApiConfig();
+import { API_ENDPOINTS, apiClient } from '../../config/api';
 
 class ProfileApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
-      const response = await fetch(`${apiConfig.baseUrl}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${token}`, // 인증이 필요한 경우
-          ...options?.headers,
-        },
-        ...options,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      console.log('🔄 ProfileApiService.request 호출:', endpoint);
+      const result = await apiClient.request<T>(endpoint, options);
+      console.log('✅ ProfileApiService.request 성공:', endpoint);
+      return result;
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('❌ Profile API request failed:', error);
       throw error;
     }
   }

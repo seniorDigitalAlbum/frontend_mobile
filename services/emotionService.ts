@@ -25,7 +25,6 @@ class EmotionService {
    */
   async analyzeEmotion(emotionData: EmotionData): Promise<EmotionServiceResult> {
     try {
-      console.log('감정 분석 시작:', emotionData.uri);
       
       const result = await predictEmotionApi(emotionData.uri);
       

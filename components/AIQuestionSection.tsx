@@ -7,9 +7,10 @@ interface AIQuestionSectionProps {
   questionText: string;
   onQuestionComplete?: () => void;
   isAIResponse?: boolean; // AI 응답인지 구분
+  onShowCamera?: () => void; // 카메라로 돌아가기 콜백
 }
 
-export default function AIQuestionSection({ questionText, onQuestionComplete, isAIResponse = false }: AIQuestionSectionProps) {
+export default function AIQuestionSection({ questionText, onQuestionComplete, isAIResponse = false, onShowCamera }: AIQuestionSectionProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
 
@@ -19,6 +20,10 @@ export default function AIQuestionSection({ questionText, onQuestionComplete, is
       if (!hasPlayed && questionText && questionText.trim() && !isAIResponse) {
         try {
           setIsPlaying(true);
+          
+          // 이전 TTS 완전 정리
+          await ttsService.stopAudio();
+          
           const ttsResult = await ttsService.synthesizeText(questionText);
           
           if (ttsResult && ttsResult.audioData) {
@@ -66,6 +71,10 @@ export default function AIQuestionSection({ questionText, onQuestionComplete, is
 
     try {
       setIsPlaying(true);
+      
+      // 이전 TTS 완전 정리
+      await ttsService.stopAudio();
+      
       const ttsResult = await ttsService.synthesizeText(questionText);
       
       if (ttsResult && ttsResult.audioData) {
@@ -109,6 +118,22 @@ export default function AIQuestionSection({ questionText, onQuestionComplete, is
             {questionText}
           </Text>
         </View>
+        
+        {/* 카메라로 돌아가기 버튼 - AI 응답일 때만 표시 */}
+        {isAIResponse && onShowCamera && (
+          <View className="mt-6">
+            <TouchableOpacity 
+              onPress={onShowCamera}
+              activeOpacity={0.7}
+              className="px-6 py-3 rounded-full"
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+            >
+              <Text className="text-white text-lg font-medium text-center">
+                카메라 보기
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
     </View>

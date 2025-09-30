@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../../config/api';
+import { apiClient } from '../../config/api';
 
 // 대화 관련 타입 정의
 export interface Conversation {
@@ -83,25 +83,14 @@ export interface SaveMessageRequest {
 }
 
 class ConversationApiService {
-  private baseUrl = `${API_BASE_URL}/api/conversations`;
-
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
-        ...options,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      console.log('🔄 ConversationApiService.request 호출:', endpoint);
+      const result = await apiClient.request<T>(`/api/conversations${endpoint}`, options);
+      console.log('✅ ConversationApiService.request 성공:', endpoint);
+      return result;
     } catch (error) {
-      console.error('Conversation API request failed:', error);
+      console.error('❌ Conversation API request failed:', error);
       throw error;
     }
   }
@@ -161,6 +150,39 @@ class ConversationApiService {
     } catch (error) {
       console.error(`Failed to get conversations for user ${userId}:`, error);
       return [];
+    }
+  }
+
+  // 보호자의 연결된 시니어들 대화 목록 조회
+  async getGuardianSeniorsConversations(guardianId: string): Promise<Conversation[]> {
+    try {
+      const response = await this.request<Conversation[]>(`/guardian/${guardianId}/seniors/conversations`);
+      return response;
+    } catch (error) {
+      console.error(`Failed to get guardian seniors conversations for guardian ${guardianId}:`, error);
+      return [];
+    }
+  }
+
+  // 특정 시니어의 대화 목록 조회
+  async getSeniorConversations(seniorId: string, guardianId: string): Promise<Conversation[]> {
+    try {
+      const response = await this.request<Conversation[]>(`/senior/${seniorId}/conversations?guardianId=${guardianId}`);
+      return response;
+    } catch (error) {
+      console.error(`Failed to get senior conversations for senior ${seniorId}:`, error);
+      return [];
+    }
+  }
+
+  // 특정 시니어의 특정 대화 조회
+  async getSeniorSpecificConversation(seniorId: string, conversationId: string, guardianId: string): Promise<Conversation | null> {
+    try {
+      const response = await this.request<Conversation>(`/senior/${seniorId}/conversations/${conversationId}?guardianId=${guardianId}`);
+      return response;
+    } catch (error) {
+      console.error(`Failed to get senior specific conversation for senior ${seniorId}, conversation ${conversationId}:`, error);
+      return null;
     }
   }
 
@@ -344,7 +366,7 @@ class ConversationApiService {
    */
   async getDiaryByConversation(conversationId: number): Promise<any> {
     try {
-      console.log('🔍 일기 조회 API 호출:', `${this.baseUrl}/${conversationId}/diary`);
+      console.log('🔍 일기 조회 API 호출:', `/api/conversations/${conversationId}/diary`);
       const response = await this.request<any>(`/${conversationId}/diary`);
       
       if (response) {
@@ -378,7 +400,7 @@ class ConversationApiService {
     
     // 2. 일기 내용에서 첫 번째 문장 추출
     if (diaryDetail.diary) {
-      const firstSentence = diaryDetail.diary.split('.').find(sentence => sentence.trim().length > 10);
+      const firstSentence = diaryDetail.diary.split('.').find((sentence: string) => sentence.trim().length > 10);
       if (firstSentence) {
         const trimmed = firstSentence.trim();
         // 20자 이내로 제한

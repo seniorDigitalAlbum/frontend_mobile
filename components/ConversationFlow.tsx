@@ -54,9 +54,6 @@ export default function ConversationFlow({
   const conversationId = propConversationId || routeParams.conversationId;
   const userId = propUserId || routeParams.userId;
   
-  // console.log('ConversationFlow - propQuestionText:', propQuestionText);
-  // console.log('ConversationFlow - routeParams.questionText:', routeParams.questionText);
-  // console.log('ConversationFlow - 최종 questionText:', questionText);
 
   /**
    * 컴포넌트 마운트 시 플로우 초기화
@@ -136,7 +133,6 @@ export default function ConversationFlow({
                    questionId: state.conversationInfo.questionId || 5
                  });
 
-                 console.log('대화 세션 시작됨:', startResponse);
 
                  // 세션 ID를 Context에 저장
                  dispatch(conversationActions.setSessionIds({
@@ -156,7 +152,6 @@ export default function ConversationFlow({
             dispatch(conversationActions.setMicrophoneTestResult('success'));
             dispatch(conversationActions.setStep('tts_playback'));
           } catch (error) {
-            console.error('대화 세션 시작 실패:', error);
             dispatch(conversationActions.setError('대화 세션을 시작할 수 없습니다.'));
           }
         }, 100);

@@ -10,6 +10,7 @@ export interface UseMicrophoneTestReturn {
     // 상태
     isMicTested: boolean;
     isRecording: boolean;
+    isLoading: boolean;
     audioLevel: number;
     speechBubbleText: string;
     sttResult: STTTestResult | null;
@@ -32,9 +33,15 @@ export const useMicrophoneTest = (routeParams: any): UseMicrophoneTestReturn => 
     const params = MicrophoneTestUtils.extractParams(routeParams) as MicrophoneTestParams;
     const userId = user?.userId || "1";
     
+    // 디버깅: 사용자 정보와 토큰 상태 확인
+    console.log('🔍 useMicrophoneTest - 사용자 정보:', user);
+    console.log('🔍 useMicrophoneTest - userId:', userId);
+    console.log('🔍 useMicrophoneTest - user.token:', user?.token ? '토큰 있음' : '토큰 없음');
+    
     // 상태
     const [isMicTested, setIsMicTested] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [audioLevel, setAudioLevel] = useState(0);
     const [speechBubbleText, setSpeechBubbleText] = useState("마이크를 테스트할게요.\n마이크를 눌러주세요.");
     const [sttResult, setSttResult] = useState<STTTestResult | null>(null);
@@ -70,11 +77,17 @@ export const useMicrophoneTest = (routeParams: any): UseMicrophoneTestReturn => 
     // 마이크 테스트 시작
     const startMicTest = useCallback(async () => {
         try {
-            setIsRecording(true);
-            setSpeechBubbleText("말씀해주세요...\n3초 동안 아무 말이나 해주세요.");
+            setIsLoading(true);
+            setSpeechBubbleText("마이크를 준비하고 있습니다...\n잠시만 기다려주세요.");
             
-            // STT 테스트 실행
-            const result = await MicrophoneTestService.runSTTTest();
+            // STT 테스트 실행 (녹음 시작 콜백 전달)
+            const result = await MicrophoneTestService.runSTTTest(() => {
+                // 녹음이 실제로 시작된 후에만 상태 업데이트
+                setIsLoading(false);
+                setIsRecording(true);
+                setSpeechBubbleText("3초 동안 아무 말이나 해주세요...");
+            });
+            
             setSttResult(result);
             
             setIsRecording(false);
@@ -94,6 +107,7 @@ export const useMicrophoneTest = (routeParams: any): UseMicrophoneTestReturn => 
 
         } catch (error) {
             console.error('마이크 테스트 시작 실패:', error);
+            setIsLoading(false);
             setIsRecording(false);
             setSpeechBubbleText("테스트 중 오류가 발생했습니다.\n다시 시도해주세요.");
         }
@@ -122,6 +136,7 @@ export const useMicrophoneTest = (routeParams: any): UseMicrophoneTestReturn => 
         // 상태
         isMicTested,
         isRecording,
+        isLoading,
         audioLevel,
         speechBubbleText,
         sttResult,

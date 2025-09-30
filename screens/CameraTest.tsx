@@ -15,6 +15,29 @@ export default function CameraTest({ route, navigation }: Props) {
     const [isDetecting, setIsDetecting] = useState(false);
     const [emotionData, setEmotionData] = useState<any>(null);
     const [faceDetectionCount, setFaceDetectionCount] = useState(0); // 연속 얼굴 인식 카운터
+    const [isTestComplete, setIsTestComplete] = useState(false); // 테스트 완료 상태
+    
+    // 얼굴이 앱 화면 영역 내에 있는지 확인하는 함수
+    const isFaceInAppArea = (x1: number, y1: number, x2: number, y2: number) => {
+        // 웹캠 해상도 (일반적으로 640x480 또는 1280x720)
+        const webcamWidth = 640;
+        const webcamHeight = 480;
+        
+        // 앱 화면 영역 (웹캠 좌표 기준)
+        // 화면 중앙 60% 영역만 유효한 얼굴 인식 영역으로 설정
+        const appAreaMarginX = webcamWidth * 0.2; // 좌우 20% 마진
+        const appAreaMarginY = webcamHeight * 0.2; // 상하 20% 마진
+        
+        const appAreaX1 = appAreaMarginX;
+        const appAreaY1 = appAreaMarginY;
+        const appAreaX2 = webcamWidth - appAreaMarginX;
+        const appAreaY2 = webcamHeight - appAreaMarginY;
+        
+        // 얼굴이 앱 영역 내에 있는지 확인
+        const isInArea = x1 >= appAreaX1 && y1 >= appAreaY1 && x2 <= appAreaX2 && y2 <= appAreaY2;
+        
+        return isInArea;
+    };
     
     // 커스텀 훅으로 상태와 로직 분리
     const { 
@@ -67,29 +90,42 @@ export default function CameraTest({ route, navigation }: Props) {
                 <HiddenCamera
                     isVisible={true}
                     isTestMode={true}
+                    isTestComplete={isTestComplete}
                     onTestFaceDetected={(faceDetected, emotionData) => {
-                        console.log('📸 CameraTest - YOLO 응답:', emotionData);
-                        console.log('📸 CameraTest - 얼굴 인식 여부:', faceDetected);
+                        // YOLO 응답에서 좌표값 출력 (앱 영역 내에서만)
+                        let isInAppArea = true; // 기본값으로 true 설정
+                        if (emotionData?.data?.bounding_box) {
+                            const [x1, y1, x2, y2] = emotionData.data.bounding_box;
+                            const isNoDetection = emotionData?.emotion === 'no detections' || emotionData?.emotion === 'neutral' || !emotionData?.emotion;
+                            
+                            // 앱 화면 영역 내에서만 얼굴 인식으로 처리
+                            // YOLO 좌표는 전체 웹캠 영역 기준이므로, 앱 화면 영역과 비교
+                            isInAppArea = isFaceInAppArea(x1, y1, x2, y2);
+                            
+                            // 앱 영역 내에서만 콘솔 출력
+                            if (isInAppArea) {
+                                const status = isNoDetection ? '얼굴이 인식되지 않음' : '얼굴이 인식됨';
+                                console.log(`인식된 얼굴 좌표 : (${x1}, ${y1}, ${x2}, ${y2}) - ${status}`);
+                            }
+                        }
                         
                         setEmotionData(emotionData);
                         setIsDetecting(true);
                         
-                        // 3번 연속으로 non-neutral 값을 받았을 때만 얼굴 인식 성공으로 처리
-                        if (emotionData?.emotion && emotionData.emotion !== 'neutral') {
+                        // 3번 연속으로 non-neutral, non-no detections 값을 받았을 때만 얼굴 인식 성공으로 처리
+                        // 단, 앱 영역 내에서만 인식된 경우만 성공으로 처리
+                        if (emotionData?.emotion && emotionData.emotion !== 'neutral' && emotionData.emotion !== 'no detections' && isInAppArea) {
                             const newCount = faceDetectionCount + 1;
                             setFaceDetectionCount(newCount);
                             
-                            console.log(`📸 CameraTest - 연속 얼굴 인식 카운트: ${newCount}/3`);
-                            
                             if (newCount >= 3) {
                                 setIsFaceDetected(true);
-                                console.log('📸 CameraTest - 얼굴 인식 성공! (3번 연속)');
+                                setIsTestComplete(true); // 테스트 완료 상태로 설정
                             }
                         } else {
-                            // neutral이거나 실패한 경우 카운터 리셋
+                            // neutral, no detections이거나 앱 영역 외부인 경우 카운터 리셋
                             setFaceDetectionCount(0);
                             setIsFaceDetected(false);
-                            console.log('📸 CameraTest - 얼굴 인식 카운터 리셋');
                         }
                     }}
                 />
@@ -124,12 +160,12 @@ export default function CameraTest({ route, navigation }: Props) {
                                     <Text className="text-white text-3xl font-medium text-center px-8 leading-9 mt-6">
                                         얼굴이 잘 안보여요
                                     </Text>
-                                    <Text className="text-white/80 text-lg text-center px-8 mt-4 leading-7">
+                                    <Text className="text-white/80 text-xl text-center px-8 mt-4 leading-7">
                                         카메라에 얼굴이 잘 보이도록 해주세요
                                     </Text>
                                     <View className="mt-6 flex-row items-center">
                                         <View className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse mr-3" />
-                                        <Text className="text-yellow-400 text-lg">
+                                        <Text className="text-yellow-400 text-xl">
                                             {faceDetectionCount > 0 
                                                 ? `얼굴을 인식하고 있어요... (${faceDetectionCount}/3)`
                                                 : '얼굴을 찾고 있어요...'
@@ -194,3 +230,5 @@ export default function CameraTest({ route, navigation }: Props) {
         </SafeAreaView>
     );
 }
+
+

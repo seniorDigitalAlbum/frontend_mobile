@@ -155,18 +155,7 @@ export default function GuardianConnection({ navigation }: Props) {
             }
         } catch (error) {
             console.error('이름과 전화번호로 시니어 검색 실패:', error);
-            
-            // 401 에러인 경우 로그인 화면으로 이동
-            if (error instanceof Error && error.message.includes('401')) {
-                Alert.alert('인증 오류', '로그인이 만료되었습니다. 다시 로그인해주세요.', [
-                    {
-                        text: '확인',
-                        onPress: () => navigation.navigate('Login' as any)
-                    }
-                ]);
-            } else {
-                Alert.alert('오류', '이름과 전화번호로 시니어 검색에 실패했습니다.');
-            }
+            Alert.alert('오류', '이름과 전화번호로 시니어 검색에 실패했습니다.');
         } finally {
             setIsSearching(false);
         }

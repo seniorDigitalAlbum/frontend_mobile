@@ -53,8 +53,6 @@ export default function Home() {
         return <LoadingScreen message="질문을 불러오는 중..." />;
     }
 
-    console.log(`Rendering ${questions.length} questions`);
-
     return (
         <View className="flex-1">
             {/* 알림 아이콘 */}

@@ -1,10 +1,11 @@
-import { View, Text, SafeAreaView, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { Ionicons } from '@expo/vector-icons';
 import AICharacter from '../components/AICharacter';
 import { useMicrophoneTest } from '../hooks/useMicrophoneTest';
 import { MicrophoneTestUtils } from '../utils/microphoneTestUtils';
+import { colors } from '../styles/commonStyles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MicrophoneTest'>;
 
@@ -13,6 +14,7 @@ export default function MicrophoneTest({ route, navigation }: Props) {
     const { 
         isMicTested,
         isRecording,
+        isLoading,
         audioLevel,
         speechBubbleText,
         sttResult,
@@ -72,7 +74,7 @@ export default function MicrophoneTest({ route, navigation }: Props) {
                 <View className="items-center mb-8" style={{ height: 200, marginTop: 60 }}>
                     <TouchableOpacity 
                         onPress={startMicTest}
-                        disabled={isRecording || isMicTested}
+                        disabled={isRecording || isMicTested || isLoading}
                         className={`w-48 h-48 rounded-full justify-center items-center ${
                             isMicTested ? '' : MicrophoneTestUtils.getBackgroundColor(isRecording, isMicTested) as string
                         }`}
@@ -80,43 +82,20 @@ export default function MicrophoneTest({ route, navigation }: Props) {
                         activeOpacity={0.7}
                     >
                         <View className="w-24 h-24 justify-center items-center">
-                        <Ionicons 
-                                name={MicrophoneTestUtils.getIconName(isRecording, isMicTested) as any} 
-                                size={100} 
-                                color={MicrophoneTestUtils.getIconColor(isRecording, isMicTested)} 
-                            />
+                            {isLoading ? (
+                                <ActivityIndicator size="large" color={colors.green} />
+                            ) : (
+                                <Ionicons 
+                                    name={MicrophoneTestUtils.getIconName(isRecording, isMicTested) as any} 
+                                    size={100} 
+                                    color={MicrophoneTestUtils.getIconColor(isRecording, isMicTested)} 
+                                />
+                            )}
                         </View>
                         
-                        {/* 실시간 오디오 레벨 표시 */}
-                        {isRecording && (
-                            <View className="absolute -bottom-20 left-0 right-0 items-center">
-                                <View className="flex-row items-end space-x-3 h-16">
-                                    {[...Array(5)].map((_, index) => (
-                                        <Animated.View
-                                            key={index}
-                                            className="w-3 bg-red-500 rounded-full"
-                                            style={{
-                                                height: audioLevelAnimation.interpolate({
-                                                    inputRange: [0, 1],
-                                                    outputRange: [12, 64],
-                                                }),
-                                                opacity: audioLevelAnimation.interpolate({
-                                                    inputRange: [0, 1],
-                                                    outputRange: [0.3, 1],
-                                                }),
-                                            }}
-                                        />
-                                    ))}
-                                </View>
-                            </View>
-                        )}
+                    
                     </TouchableOpacity>
                     
-                    {isRecording && (
-                        <Text className="text-lg text-red-400 mt-2">
-                            녹음 중... 듣고 있습니다
-                        </Text>
-                    )}
 
                 </View>
                 <View className="items-center" style={{ height: 80 }}>

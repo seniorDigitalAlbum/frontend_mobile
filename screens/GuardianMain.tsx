@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert, StatusBar } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import NotificationIcon from '../components/NotificationIcon';
 import { RootStackParamList } from '../App';
 import { colors } from '../styles/commonStyles';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../contexts/UserContext';
 import guardianService, { SeniorInfo } from '../services/guardianService';
-import albumApiService from '../services/api/albumApiService';
+import apiClient from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GuardianMain'>;
 
@@ -51,6 +53,15 @@ export default function GuardianMain({ navigation }: Props) {
         };
     }, [user]);
 
+    // 화면 포커스 시 표지 사진 새로고침
+    useFocusEffect(
+        React.useCallback(() => {
+            if (connectedSeniors.length > 0) {
+                loadSeniorCoverPhotos(connectedSeniors);
+            }
+        }, [connectedSeniors])
+    );
+
     const loadConnectedSeniors = async () => {
         if (!user?.id) return;
         
@@ -71,22 +82,6 @@ export default function GuardianMain({ navigation }: Props) {
             
         } catch (error) {
             console.error('시니어 목록 조회 실패:', error);
-            
-            // 401 오류인 경우 로그인 화면으로 리다이렉트
-            if (error instanceof Error && error.message.includes('Full authentication is required')) {
-                Alert.alert(
-                    '세션 만료', 
-                    '로그인이 만료되었습니다. 다시 로그인해주세요.',
-                    [
-                        {
-                            text: '확인',
-                            onPress: () => navigation.navigate('Login' as any)
-                        }
-                    ]
-                );
-                return;
-            }
-            
             Alert.alert('오류', '시니어 목록을 불러올 수 없습니다.');
         } finally {
             setIsLoading(false);
@@ -99,10 +94,14 @@ export default function GuardianMain({ navigation }: Props) {
             const coverPhotos: {[key: string]: string} = {};
             
             for (const senior of seniors) {
-                const userId = `senior_${senior.id}`;
-                const coverPhoto = await albumApiService.getSeniorCoverPhoto(userId);
-                if (coverPhoto) {
-                    coverPhotos[senior.id.toString()] = coverPhoto;
+                try {
+                    const coverPhoto = await apiClient.get<any>(`/api/albums/senior/${senior.id}/cover-photo`);
+                    if (coverPhoto && coverPhoto.imageUrl) {
+                        coverPhotos[senior.id.toString()] = coverPhoto.imageUrl;
+                    }
+                } catch (error) {
+                    console.log(`시니어 ${senior.id}의 표지 사진 없음`);
+                    // 표지 사진이 없는 경우 무시하고 계속 진행
                 }
             }
             
@@ -150,13 +149,20 @@ export default function GuardianMain({ navigation }: Props) {
                     }}
                 >
                     {/* 표지 사진 */}
-                    <View className="h-36 relative">
+                    <View className="h-100 relative">
                         <Image 
                             source={{ uri: coverPhoto || defaultImage }}
                             className="w-full h-full"
                             resizeMode="cover"
                         />
-                        <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/20 to-transparent h-8" />
+                        <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent h-20" />
+                        
+                        {/* 시니어 이름 표시 */}
+                        <View className="absolute bottom-0 left-0 right-0 p-4">
+                            <Text className="text-white text-4xl font-bold">
+                                {senior.name}
+                            </Text>
+                        </View>
                     </View>
                     
                 </View>
@@ -205,7 +211,7 @@ export default function GuardianMain({ navigation }: Props) {
                             className="rounded-3xl p-8 items-center shadow-sm"
                             style={{ backgroundColor: colors.beige }}
                         >
-                            <Text style={{ color: colors.darkGreen }}>시니어 목록을 불러오는 중...</Text>
+                            <Text style={{ color: 'black' }}>시니어 목록을 불러오는 중...</Text>
                         </View>
                     ) : connectedSeniors.length > 0 ? (
                         <View className="mb-8">
@@ -220,7 +226,7 @@ export default function GuardianMain({ navigation }: Props) {
                                     <View
                                         className="rounded-3xl p-6 items-center h-48 justify-center shadow-lg"
                                         style={{
-                                            backgroundColor: colors.green,
+                                            backgroundColor: colors.beige,
                                             shadowColor: '#000',
                                             shadowOffset: { width: 0, height: 4 },
                                             shadowOpacity: 0.1,
@@ -240,11 +246,7 @@ export default function GuardianMain({ navigation }: Props) {
                     ) : (
                         <View 
                             className="rounded-3xl p-8 items-center shadow-sm mb-8"
-                            style={{ backgroundColor: colors.beige }}
                         >
-                            <View className="rounded-full p-6 mb-4" style={{ backgroundColor: colors.green }}>
-                                <Text style={{ fontSize: 48, color: 'white' }}>👥</Text>
-                            </View>
                             <Text className="text-center text-lg font-semibold mb-2" style={{ color: colors.darkGreen }}>
                                 아직 연결된 시니어가 없습니다
                             </Text>

@@ -1,4 +1,4 @@
-import { API_BASE_URL, API_ENDPOINTS, getYoloEmotionApiUrl } from '../../config/api';
+import { apiClient, API_ENDPOINTS, getYoloEmotionApiUrl } from '../../config/api';
 
 // 감정 분석 결과 타입 정의
 export interface EmotionAnalysisResult {
@@ -49,27 +49,7 @@ export const predictEmotionApi = async (imageUri: string): Promise<EmotionAnalys
     const baseUrl = getYoloEmotionApiUrl();
     const apiUrl = `${baseUrl}/predict_emotion`;
     
-    // 먼저 서버 연결 테스트 (GET 메서드로 간단히)
-    console.log('🔍 YOLO Base URL:', baseUrl);
-    console.log('🔍 YOLO Full API URL:', apiUrl);
-    console.log('서버 연결 테스트 시작:', apiUrl);
-    try {
-      const testResponse = await fetch(apiUrl.replace('/predict_emotion', '/health'), {
-        method: 'GET',
-        timeout: 5000, // 5초 타임아웃
-      });
-      console.log('서버 연결 테스트 응답:', testResponse.status, testResponse.statusText);
-    } catch (testError) {
-      console.error('서버 연결 테스트 실패:', testError);
-      console.log('감정 분석 서버가 실행되지 않거나 접근할 수 없습니다. 모의 데이터를 사용합니다.');
-      // 모의 감정 분석 결과 반환
-      return {
-        emotion: 'neutral',
-        confidence: 0.75,
-        bounding_box: [0, 0, 100, 100],
-        mock: true
-      };
-    }
+    // health 체크 비활성화 - 바로 API 호출
     
     // 이미지 URI 처리 (파일 URI 또는 Base64)
     const formData = new FormData();
@@ -108,20 +88,19 @@ export const predictEmotionApi = async (imageUri: string): Promise<EmotionAnalys
       return null;
     }
 
-    console.log('FormData 생성 완료, API 요청 전송 중...');
-    console.log('전송할 이미지 URI:', imageUri);
-    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 500000); // 10초 타임아웃
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       body: formData,
+      signal: controller.signal,
     });
 
-    console.log('API 응답 상태:', response.status, response.statusText);
-    console.log('API 응답 헤더:', response.headers);
+    clearTimeout(timeoutId);
 
     if (response.ok) {
       const result = await response.json();
-      console.log('감정 분석 성공:', result);
       return result;
     } else {
       const errorText = await response.text();
@@ -130,8 +109,12 @@ export const predictEmotionApi = async (imageUri: string): Promise<EmotionAnalys
       return null;
     }
     } catch (error) {
-      console.error('감정 분석 API 호출 중 오류:', error);
-      console.error('오류 상세:', error instanceof Error ? error.message : 'Unknown error');
+      if (error.name === 'AbortError') {
+        console.error('감정 분석 요청 타임아웃 (10초 초과)');
+      } else {
+        console.error('감정 분석 API 호출 중 오류:', error);
+        console.error('오류 상세:', error instanceof Error ? error.message : 'Unknown error');
+      }
       return null;
     }
 };
@@ -165,7 +148,6 @@ export const sendFacialEmotionAnalysis = async (
     console.log('변환된 요청 데이터:', requestData);
     
     const result = await apiClient.post('/api/emotion-analysis/facial', requestData);
-    console.log('얼굴 감정 분석 결과 전송 성공:', result);
     return result;
   } catch (error) {
     console.error('얼굴 감정 분석 결과 전송 실패:', error);

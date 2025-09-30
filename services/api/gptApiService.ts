@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../../config/api';
+import { apiClient } from '../../config/api';
 
 export interface GPTGenerateRequest {
   conversationMessageId: number;
@@ -12,25 +12,14 @@ export interface GPTGenerateResponse {
 }
 
 class GPTApiService {
-  private baseUrl = `${API_BASE_URL}/api/gpt`;
-
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
-        ...options,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      console.log('🔄 GPTApiService.request 호출:', endpoint);
+      const result = await apiClient.request<T>(`/api/gpt${endpoint}`, options);
+      console.log('✅ GPTApiService.request 성공:', endpoint);
+      return result;
     } catch (error) {
-      console.error('GPT API request failed:', error);
+      console.error('❌ GPT API request failed:', error);
       throw error;
     }
   }

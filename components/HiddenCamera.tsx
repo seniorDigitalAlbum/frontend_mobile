@@ -11,6 +11,7 @@ interface HiddenCameraProps {
     // 카메라 테스트용 props
     isVisible?: boolean; // 카메라를 사용자에게 보일지 여부
     isTestMode?: boolean; // 테스트 모드인지 여부
+    isTestComplete?: boolean; // 테스트 완료 상태
     onTestFaceDetected?: (faceDetected: boolean, emotionData?: any) => void; // 테스트용 얼굴 인식 콜백
 }
 
@@ -21,6 +22,7 @@ export default function HiddenCamera({
     onRecordingStop,
     isVisible = false,
     isTestMode = false,
+    isTestComplete = false,
     onTestFaceDetected
 }: HiddenCameraProps) {
     const [permission, requestPermission] = useCameraPermissions();
@@ -73,7 +75,17 @@ export default function HiddenCamera({
                     { cancelable: false }
                 );
             } else {
-                requestPermission();
+                try {
+                    console.log('카메라 권한 요청 중...');
+                    await requestPermission();
+                } catch (error) {
+                    console.error('카메라 권한 요청 실패:', error);
+                    Alert.alert(
+                        "권한 요청 실패",
+                        "카메라 권한 요청에 실패했습니다. 브라우저 설정에서 카메라 권한을 확인해주세요.",
+                        [{ text: "확인" }]
+                    );
+                }
             }
         }
     };
@@ -87,12 +99,29 @@ export default function HiddenCamera({
     useEffect(() => {
         let testTimer: NodeJS.Timeout | null = null;
         
-        if (isTestMode && permission?.status === 'granted') {
-            console.log('📸 테스트 모드 - 1초마다 얼굴 인식 시작');
+        // 테스트가 완료되었으면 타이머 정리
+        if (isTestComplete) {
+            return () => {
+                if (testTimer) {
+                    clearTimeout(testTimer);
+                    testTimer = null;
+                }
+            };
+        }
+        
+        if (isTestMode && permission?.status === 'granted' && !isTestComplete) {
             
             const testFaceDetection = async () => {
+                // 테스트가 완료되었으면 함수 실행 중단
+                if (isTestComplete) {
+                    return;
+                }
+                
                 if (cameraRef.current && isTestMode) {
                     try {
+                        // 카메라가 준비될 때까지 잠시 대기
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        
                         const photo = await cameraRef.current.takePictureAsync({
                             quality: 0.8,
                             base64: false,
@@ -102,15 +131,12 @@ export default function HiddenCamera({
                         });
                         
                         if (photo?.uri) {
-                            console.log('📸 테스트 모드 - 이미지 캡처 완료, YOLO 서버로 전송');
-                            
+                            console.log('📸 사진 촬영 완료, YOLO 서버로 전송 중...');
                             // YOLO 서버로 얼굴 인식 요청
                             const emotionResult = await emotionService.analyzeEmotion({
                                 uri: photo.uri,
                                 timestamp: new Date().toISOString()
                             });
-                            
-                            console.log('📸 테스트 모드 - YOLO 응답:', emotionResult);
                             
                             // neutral이면 얼굴이 잘 안보인 것으로 판단
                             const faceDetected = Boolean(emotionResult.success && emotionResult.emotion && emotionResult.emotion !== 'neutral');
@@ -121,7 +147,6 @@ export default function HiddenCamera({
                             }
                         }
                     } catch (error) {
-                        console.error('테스트 얼굴 인식 실패:', error);
                         setIsFaceDetected(false);
                         if (onTestFaceDetectedRef.current) {
                             onTestFaceDetectedRef.current(false, null);
@@ -129,14 +154,24 @@ export default function HiddenCamera({
                     }
                 }
                 
-                // 1초 후 다시 실행 (테스트 모드에서만)
-                if (isTestMode) {
-                    testTimer = setTimeout(testFaceDetection, 1000);
+                // 0.3초 후 다시 실행 (테스트 모드에서만, 테스트가 완료되지 않았을 때만)
+                if (isTestMode && !isTestComplete) {
+                    testTimer = setTimeout(() => {
+                        // 타이머 실행 시점에 다시 한번 체크
+                        if (!isTestComplete) {
+                            testFaceDetection();
+                        }
+                    }, 300);
                 }
             };
             
-            // 첫 번째 얼굴 인식 즉시 실행
-            testFaceDetection();
+            // 첫 번째 얼굴 인식 0.3초 후 실행 (카메라 로딩 대기)
+            testTimer = setTimeout(() => {
+                // 타이머 실행 시점에 다시 한번 체크
+                if (!isTestComplete) {
+                    testFaceDetection();
+                }
+            }, 300);
         }
         
         return () => {
@@ -145,33 +180,25 @@ export default function HiddenCamera({
                 clearTimeout(testTimer);
                 testTimer = null;
             }
-            console.log('📸 테스트 모드 - 얼굴 인식 중단');
         };
-    }, [isTestMode, permission]);
+    }, [isTestMode, permission, isRecording, isImageSending, isTestComplete]);
 
     // 녹음 상태 변화 감지 및 이미지 전송 제어
     useEffect(() => {
-        console.log('🔍 HiddenCamera useEffect 실행:', { 
-            permission: permission?.status, 
-            isRecording, 
-            isImageSending 
-        });
+        // 테스트 모드일 때는 녹음 모드 useEffect 비활성화
+        if (isTestMode) {
+            return;
+        }
         
         if (permission?.status === 'granted') {
             if (isRecording && !isImageSending) {
-                console.log('📸 이미지 전송 시작 - isRecording:', isRecording, 'isImageSending:', isImageSending);
                 // 녹음 시작 - 이미지 전송 시작
                 setIsImageSending(true);
                 onRecordingStartRef.current?.();
                 
                 // 1초마다 이미지 캡처하여 AI 서버로 전송 (setTimeout 재귀 사용)
-                console.log('📸 이미지 캡처 타이머 시작...');
                 
                 const captureImage = async () => {
-                    console.log('📸 ⏰ 이미지 캡처 타이머 실행됨!');
-                    console.log('📸 이미지 캡처 시도 중...');
-                    console.log('📸 cameraRef.current:', cameraRef.current);
-                    
                     if (cameraRef.current) {
                         try {
                             // 이미지 캡처 (소리 없이)
@@ -183,18 +210,12 @@ export default function HiddenCamera({
                                 shutterSound: false
                             });
                             
-                            console.log('📸 이미지 캡처 완료:', photo?.uri);
-                            
                         if (photo?.uri) {
-                            console.log('🤖 감정 분석 시작...');
-                            
                             // 감정 분석 서비스로 이미지 전송
                             const emotionResult = await emotionService.analyzeEmotion({
                                 uri: photo.uri,
                                 timestamp: new Date().toISOString()
                             });
-                            
-                            console.log('🤖 감정 분석 결과:', emotionResult);
                             
                             if (onFaceDetectedRef.current) {
                                 onFaceDetectedRef.current({
@@ -206,36 +227,26 @@ export default function HiddenCamera({
                                         : '감정 분석 실패'
                                 });
                             }
-                        } else {
-                            console.error('📸 이미지 캡처 실패: photo.uri가 없음');
                         }
                         } catch (error) {
-                            console.error('📸 이미지 캡처 실패:', error);
+                            // 에러 처리
                         }
-                    } else {
-                        console.error('📸 카메라 참조가 없음');
                     }
                     
                     // 1초 후 다시 실행 (녹음 중일 때만)
                     // ref를 사용해서 최신 상태 확인
                     if (isRecordingRef.current && isImageSendingRef.current) {
                         intervalRef.current = setTimeout(captureImage, 1000);
-                        console.log('📸 다음 이미지 캡처 예약됨 (1초 후)');
-                    } else {
-                        console.log('📸 녹음 종료됨 - 이미지 캡처 중단');
                     }
                 };
                 
                 // 첫 번째 이미지 캡처 시작 (즉시 실행으로 테스트)
-                console.log('📸 즉시 이미지 캡처 테스트 시작...');
                 captureImage();
                 
                 // 1초 후에도 실행
                 intervalRef.current = setTimeout(() => {
-                    console.log('📸 setTimeout 콜백 실행됨!');
                     captureImage();
                 }, 1000);
-                console.log('📸 첫 번째 이미지 캡처 예약됨 (1초 후)');
             } else if (!isRecording && isImageSending) {
                 // 녹음 종료 - 이미지 전송 중단
                 setIsImageSending(false);
@@ -271,6 +282,19 @@ export default function HiddenCamera({
                 animateShutter={false}
                 flash="off"
                 enableTorch={false}
+                onCameraReady={() => {
+                    console.log('카메라 준비 완료');
+                }}
+                onMountError={(error) => {
+                    console.error('카메라 마운트 오류:', error);
+                    if (error.message.includes('Timeout starting video source')) {
+                        Alert.alert(
+                            "카메라 접근 오류",
+                            "카메라에 접근할 수 없습니다. 브라우저에서 카메라 권한을 확인하고 페이지를 새로고침해주세요.",
+                            [{ text: "확인" }]
+                        );
+                    }
+                }}
             />
         </View>
     );

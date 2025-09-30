@@ -13,6 +13,7 @@ export interface STTResult {
 class STTService {
   private recording: Audio.Recording | null = null;
   private isRecording = false;
+  private onRecordingStarted: (() => void) | null = null;
 
   async checkHealth(): Promise<boolean> {
     console.log('STT 서비스 헬스체크 시작...');
@@ -21,8 +22,10 @@ class STTService {
     return result;
   }
 
-  async startRecording(): Promise<boolean> {
+  async startRecording(onStarted?: () => void): Promise<boolean> {
     try {
+      console.log('=== 녹음 시작 프로세스 시작 ===');
+      
       if (this.isRecording) {
         console.log('이미 녹음 중입니다.');
         return false;
@@ -30,6 +33,7 @@ class STTService {
 
       // 기존 녹음 객체가 있다면 정리
       if (this.recording) {
+        console.log('기존 녹음 객체 정리 중...');
         try {
           await this.recording.stopAndUnloadAsync();
         } catch (error) {
@@ -39,23 +43,51 @@ class STTService {
       }
 
       // 오디오 권한 요청
+      console.log('오디오 권한 확인 중...');
+      const permissionStartTime = Date.now();
       const { status } = await Audio.requestPermissionsAsync();
+      const permissionEndTime = Date.now();
+      console.log(`오디오 권한 확인 완료 (${permissionEndTime - permissionStartTime}ms 소요)`);
+      
       if (status !== 'granted') {
         console.error('오디오 권한이 거부되었습니다.');
         return false;
       }
 
       // 오디오 모드 설정
+      console.log('오디오 모드 설정 중...');
+      const audioModeStartTime = Date.now();
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
+      const audioModeEndTime = Date.now();
+      console.log(`오디오 모드 설정 완료 (${audioModeEndTime - audioModeStartTime}ms 소요)`);
+
+      // 웹 환경에서 지원되는 MIME 타입 확인
+      console.log('웹 환경 MIME 타입 확인 중...');
+      let webMimeType = 'audio/webm;codecs=opus';
+      if (typeof MediaRecorder !== 'undefined') {
+        // 가장 빠른 초기화를 위해 우선순위 조정
+        if (MediaRecorder.isTypeSupported('audio/webm')) {
+          webMimeType = 'audio/webm';  // codecs 없이 더 빠른 초기화
+        } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          webMimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          webMimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+          webMimeType = 'audio/wav';
+        }
+        console.log('선택된 MIME 타입:', webMimeType);
+      }
 
       // 녹음 시작
+      console.log('녹음 설정 준비 중...');
       const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync({
+      
+      const recordingOptions = {
         android: {
           extension: '.wav',
           outputFormat: Audio.RECORDING_OPTION_ANDROID_OUTPUT_FORMAT_DEFAULT,
@@ -76,16 +108,31 @@ class STTService {
           linearPCMIsFloat: false,
         },
         web: {
-          mimeType: 'audio/wav',
+          mimeType: webMimeType,
           bitsPerSecond: 128000,
         },
-      });
+      };
 
+      console.log('녹음 옵션 설정:', recordingOptions);
+      const prepareStartTime = Date.now();
+      await recording.prepareToRecordAsync(recordingOptions);
+      const prepareEndTime = Date.now();
+      console.log(`녹음 준비 완료 (${prepareEndTime - prepareStartTime}ms 소요)`);
+
+      console.log('녹음 시작 중...');
+      const startTime = Date.now();
       await recording.startAsync();
+      const endTime = Date.now();
+      console.log(`녹음 시작 완료 (${endTime - startTime}ms 소요)`);
       this.recording = recording;
       this.isRecording = true;
       
-      console.log('녹음이 시작되었습니다.');
+      // 녹음이 실제로 시작된 후 콜백 호출
+      if (onStarted) {
+        onStarted();
+      }
+      
+      console.log('=== 녹음 시작 프로세스 완료 ===');
       return true;
     } catch (error) {
       console.error('녹음 시작 실패:', error);
@@ -224,7 +271,6 @@ class STTService {
       }
 
       console.log('Base64 변환 완료, 데이터 길이:', audioData.length);
-      console.log('Base64 데이터 시작 부분:', audioData.substring(0, 100));
 
       // STT API 호출
       const result = await sttApiService.transcribeRealtime(audioData);

@@ -204,6 +204,10 @@ export class ConversationService {
     static async playAIResponseTTS(aiResponse: string): Promise<ConversationServiceResult> {
         try {
             console.log('🎵 AI 응답 TTS 재생 시작:', aiResponse);
+            
+            // 이전 TTS 완전 정리
+            await ttsService.stopAudio();
+            
             const ttsResponse = await ttsApiService.synthesize({
                 text: aiResponse,
                 voice: 'ko-KR-Wavenet-A',

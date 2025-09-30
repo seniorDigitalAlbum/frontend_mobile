@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../../config/api';
+import { apiClient } from '../../config/api';
 
 export interface ConversationContextRequest {
   conversationMessageId: number;
@@ -14,25 +14,14 @@ export interface ConversationContextResponse {
 }
 
 class ConversationContextApiService {
-  private baseUrl = `${API_BASE_URL}/api/conversations`;
-
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
-        ...options,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      console.log('🔄 ConversationContextApiService.request 호출:', endpoint);
+      const result = await apiClient.request<T>(`/api/conversations${endpoint}`, options);
+      console.log('✅ ConversationContextApiService.request 성공:', endpoint);
+      return result;
     } catch (error) {
-      console.error('Conversation Context API request failed:', error);
+      console.error('❌ Conversation Context API request failed:', error);
       throw error;
     }
   }

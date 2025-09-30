@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, Alert, StatusBar, FlatList } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { colors } from '../styles/commonStyles';
 import { LinearGradient } from 'expo-linear-gradient';
 import conversationApiService from '../services/api/conversationApiService';
+import { useUser } from '../contexts/UserContext';
+import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '../config/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SeniorAlbumList'>;
 
@@ -13,31 +16,45 @@ import { Conversation } from '../services/api/conversationApiService';
 
 export default function SeniorAlbumList({ route, navigation }: Props) {
     const { seniorId, seniorName } = route.params;
+    const { user } = useUser();
     const [albums, setAlbums] = useState<Conversation[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [diaryList, setDiaryList] = useState<any[]>([]);
+
+    // 감정에 따른 이미지 매핑
+    const getEmotionImage = (emotion: string) => {
+        const emotionMap: Record<string, any> = {
+            '기쁨': require('../assets/happy.png'),
+            '슬픔': require('../assets/sad.png'),
+            '분노': require('../assets/angry.png'),
+            '불안': require('../assets/fear.png'),
+            '당황': require('../assets/surprised.png'),
+            '상처': require('../assets/hurt.png')
+        };
+        return emotionMap[emotion] || require('../assets/happy.png');
+    };
 
     useEffect(() => {
         loadAlbums();
-    }, [seniorId]);
+    }, [seniorId, user?.id]);
 
     const loadAlbums = async () => {
+        if (!user?.id) {
+            console.error('사용자 정보가 없습니다.');
+            Alert.alert('오류', '사용자 정보를 찾을 수 없습니다.');
+            return;
+        }
+
         setIsLoading(true);
         try {
             console.log('시니어 공개 앨범 목록 조회 시작:', seniorName);
             
-            // 시니어 ID를 userId로 사용하여 API 호출
-            // 테스트 환경에서는 실제 userId를 사용해야 함
-            let userId: string;
-            if (seniorId === 123) {
-                // 테스트 시니어의 실제 userId
-                userId = 'test_user_123';
-            } else {
-                userId = seniorId.toString();
-            }
-            
-            // 시니어의 모든 완료된 대화 조회
-            const allAlbums = await conversationApiService.getConversationsByUser(userId);
+            // 새로운 API 사용: 보호자가 연결된 특정 시니어의 대화 목록 조회
+            const allAlbums = await conversationApiService.getSeniorConversations(
+                seniorId.toString(), 
+                user.id
+            );
             console.log('API에서 받은 시니어 대화 목록:', allAlbums);
             
             // COMPLETED 상태이고 공개된 앨범만 필터링
@@ -48,6 +65,93 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
             
             setAlbums(publicAlbums);
             console.log('공개 앨범 수:', publicAlbums.length);
+
+            // 감정 이름 매핑
+            const emotionMap: { [key: string]: string } = {
+                'happy': '기쁨',
+                'sad': '슬픔',
+                'angry': '분노',
+                'anxious': '불안',
+                'surprised': '당황',
+                'hurt': '상처'
+            };
+
+            // 대화 데이터를 일기 형태로 변환
+            const diaryData = await Promise.all(publicAlbums.map(async (conversation) => {
+                // 일기 내용이 없거나 비어있으면 null 반환
+                if (!conversation.diary || conversation.diary.trim() === '') {
+                    return null;
+                }
+
+                // 앨범 표지 사진 조회
+                const albumPhotos = await apiClient.get<any[]>(`/api/albums/${conversation.id}/photos`);
+                const coverPhoto = albumPhotos.find(photo => photo.isCover);
+                
+                // 제목과 내용을 분리하는 함수
+                const separateTitleAndContent = (diaryContent: string, dominantEmotion: string) => {
+                    const lines = diaryContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                    
+                    // "제목:" 패턴 찾기
+                    const titleIndex = lines.findIndex(line => line.startsWith('제목:'));
+                    
+                    if (titleIndex !== -1) {
+                        // 제목이 있는 경우
+                        const title = lines[titleIndex].replace(/^제목:\s*/, '').trim();
+                        const contentLines = lines.slice(titleIndex + 1);
+                        return {
+                            title: title || '특별한 하루',
+                            content: contentLines.join(' ').trim() || '일기가 아직 생성되지 않았습니다.'
+                        };
+                    } else {
+                        // 제목이 없는 경우 - 첫 번째 줄을 제목으로, 나머지를 내용으로
+                        if (lines.length > 1) {
+                            const firstLine = lines[0];
+                            const title = firstLine.length > 10 ? firstLine.substring(0, 10) + '...' : firstLine;
+                            const content = lines.slice(1).join(' ').trim();
+                            return {
+                                title: title,
+                                content: content || '일기가 아직 생성되지 않았습니다.'
+                            };
+                        } else {
+                            // 한 줄만 있는 경우
+                            const singleLine = lines[0];
+                            if (singleLine.length > 10) {
+                                return {
+                                    title: singleLine.substring(0, 10) + '...',
+                                    content: singleLine.substring(10).trim() || '일기가 아직 생성되지 않았습니다.'
+                                };
+                            } else {
+                                return {
+                                    title: singleLine,
+                                    content: '일기가 아직 생성되지 않았습니다.'
+                                };
+                            }
+                        }
+                    }
+                };
+                
+                const { title: extractedTitle, content: cleanedContent } = separateTitleAndContent(conversation.diary || '', conversation.dominantEmotion || '기쁨');
+                
+                return {
+                    id: conversation.id,
+                    title: extractedTitle,
+                    date: new Date(conversation.createdAt).toLocaleDateString('ko-KR', {
+                        month: 'short',
+                        day: 'numeric'
+                    }),
+                    preview: cleanedContent ? cleanedContent.substring(0, 100) + '...' : '일기가 생성 중입니다...',
+                    imageUrl: coverPhoto ? coverPhoto.imageUrl : 'https://picsum.photos/200/200?random=' + conversation.id,
+                    content: cleanedContent || '일기가 아직 생성되지 않았습니다.',
+                    isPending: (conversation as any).processingStatus !== 'COMPLETED',
+                    emotion: conversation.dominantEmotion || '기쁨'
+                };
+            }));
+
+            // null 값 필터링 (일기 내용이 없는 대화 제외)
+            const validDiaryData = diaryData.filter(diary => diary !== null);
+            
+            setDiaryList(validDiaryData);
+            console.log('일기 데이터 변환 완료:', validDiaryData);
         } catch (error) {
             console.error('공개 앨범 목록 조회 실패:', error);
             Alert.alert('오류', '앨범 목록을 불러올 수 없습니다.');
@@ -62,12 +166,12 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
         setRefreshing(false);
     };
 
-    const handleAlbumPress = async (album: Conversation) => {
-        console.log('앨범 선택:', generateAlbumTitle(album));
+    const handleDiaryPress = async (diary: any) => {
+        // Album.tsx와 동일한 방식으로 앨범 선택 처리
+        console.log('앨범 선택:', diary.title);
         
         try {
-            // 시니어와 동일하게 상세 데이터를 가져와서 AlbumDetail로 이동
-            const diaryDetail = await conversationApiService.getDiaryByConversation(album.id);
+            const diaryDetail = await apiClient.get<any>(`/api/conversations/${diary.id}/diary`);
             
             if (diaryDetail) {
                 navigation.navigate('AlbumDetail', {
@@ -76,111 +180,108 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
                     title: diaryDetail.title,
                     finalEmotion: diaryDetail.emotionSummary?.dominantEmotion || '기쁨',
                     musicRecommendations: diaryDetail.musicRecommendations || []
-                });
+                } as any);
             } else {
-                // fallback: 기본 데이터로 이동
+                // fallback
                 navigation.navigate('AlbumDetail', { 
-                    conversationId: album.id,
-                    diary: album.diary || `${seniorName}님의 대화 기록`,
-                    finalEmotion: '기쁨'
-                });
+                    conversationId: diary.id,
+                    diary: diary.content,
+                    title: diary.title || '특별한 하루',
+                    finalEmotion: '기쁨',
+                    musicRecommendations: []
+                } as any);
             }
         } catch (error) {
-            console.error('앨범 상세 조회 실패:', error);
-            // 에러 시에도 기본 데이터로 이동
+            console.error('일기 상세 조회 실패:', error);
             navigation.navigate('AlbumDetail', { 
-                conversationId: album.id,
-                diary: album.diary || `${seniorName}님의 대화 기록`,
+                conversationId: diary.id,
+                diary: diary.content,
+                title: diary.title || '특별한 하루',
                 finalEmotion: '기쁨'
-            });
+            } as any);
         }
     };
 
-    const getEmotionColor = (emotion: string) => {
-        switch (emotion) {
-            case 'happy': return 'bg-yellow-100 text-yellow-800';
-            case 'sad': return 'bg-blue-100 text-blue-800';
-            case 'angry': return 'bg-red-100 text-red-800';
-            case 'anxious': return 'bg-purple-100 text-purple-800';
-            case 'surprised': return 'bg-orange-100 text-orange-800';
-            case 'hurt': return 'bg-pink-100 text-pink-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
-
-    const generateAlbumTitle = (album: Conversation) => {
-        // 일기 내용이 있으면 첫 번째 문장을 제목으로 사용
-        if (album.diary && album.diary.trim()) {
-            const firstSentence = album.diary.split('.')[0];
-            return firstSentence.length > 20 ? firstSentence.substring(0, 20) + '...' : firstSentence;
-        }
-        
-        // 감정 기반 제목 생성
-        if (album.dominantEmotion) {
-            const emotionMap: { [key: string]: string } = {
-                'happy': '기쁨의 하루',
-                'sad': '슬픈 하루',
-                'angry': '분노의 하루',
-                'anxious': '불안한 하루',
-                'surprised': '당황스러운 하루',
-                'hurt': '상처받은 하루'
-            };
-            return emotionMap[album.dominantEmotion] || '특별한 하루';
-        }
-        
-        return '기억의 하루';
-    };
-
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
-
-    const renderAlbumItem = (album: Conversation) => (
+    const renderDiaryItem = ({ item }: { item: any }) => (
         <TouchableOpacity
-            key={album.id}
-            className="mb-4"
-            onPress={() => handleAlbumPress(album)}
+            onPress={() => handleDiaryPress(item)}
+            className="flex-1 mb-6 mx-2"
+            activeOpacity={0.8}
         >
             <View
-                className="rounded-2xl p-5 shadow-sm"
+                className="rounded-2xl"
                 style={{
                     backgroundColor: colors.beige,
                     shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 8,
-                    elevation: 4,
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 12,
+                    elevation: 8,
+                    minHeight: 200,
                 }}
             >
-                <View className="flex-row items-center">
-                    {/* 앨범 썸네일 */}
-                    <View className="w-16 h-16 rounded-xl bg-white mr-4 items-center justify-center shadow-sm">
-                        <Text className="text-xl" style={{ color: colors.green }}>📖</Text>
-                    </View>
-                    
-                    {/* 앨범 정보 */}
-                    <View className="flex-1">
-                        <Text className="text-lg font-bold mb-1" style={{ color: colors.darkGreen }}>
-                            {generateAlbumTitle(album)}
-                        </Text>
-                        <Text className="text-sm mb-3" style={{ color: colors.darkGreen }}>
-                            {formatDate(album.createdAt)}
-                        </Text>
-                        <View className={`px-3 py-1 rounded-full self-start ${getEmotionColor(album.dominantEmotion)}`}>
-                            <Text className="text-xs font-medium">
-                                {album.dominantEmotion || '기본'}
+                {/* 일기 내용 */}
+                <View className="p-6">
+                    {/* 저장 중 상태 표시 */}
+                    {item.isPending && (
+                        <View className="absolute top-4 right-4 bg-yellow-500 rounded-full px-3 py-1">
+                            <Text className="text-white font-medium text-sm">
+                                저장 중...
                             </Text>
                         </View>
+                    )}
+                    
+                    {/* 감정 이미지 */}
+                    <View className="mb-4">
+                            <Image 
+                                source={getEmotionImage(item.emotion)} 
+                                style={{
+                                    width: 60,
+                                    height: 60,
+                                }}
+                                resizeMode="contain"
+                            />  
                     </View>
                     
-                    {/* 화살표 */}
-                    <View className="w-8 h-8 rounded-full bg-white items-center justify-center shadow-sm">
-                        <Text className="text-lg" style={{ color: colors.green }}>→</Text>
+                    {/* 날짜 */}
+                    <View className="mb-4">
+                        <Text className="text-lg text-gray-500">
+                            {item.date}
+                        </Text>
+                    </View>
+                    
+                    {/* 제목 */}
+                    <Text className="font-bold mb-4 text-4xl leading-10 text-gray-800">
+                        {item.title}
+                    </Text>
+                    
+                    {/* 미리보기 */}
+                    <Text className="leading-6 text-xl text-gray-600" numberOfLines={3}>
+                        {item.preview}
+                    </Text>
+                    
+                    {/* 하단 아이콘과 액션 */}
+                    <View className="flex-row items-center justify-between mt-6">
+                        <View className="flex-row items-center">
+                            <Ionicons 
+                                name="heart-outline" 
+                                size={16} 
+                                color={colors.green} 
+                            />
+                            <Text className="ml-2 text-sm text-gray-500">
+                                특별한 순간
+                            </Text>
+                        </View>
+                        <View className="flex-row items-center">
+                            <Text className="mr-2 text-sm text-gray-500">
+                                자세히 보기
+                            </Text>
+                            <Ionicons 
+                                name="chevron-forward" 
+                                size={20} 
+                                color={colors.green} 
+                            />
+                        </View>
                     </View>
                 </View>
             </View>
@@ -188,56 +289,63 @@ export default function SeniorAlbumList({ route, navigation }: Props) {
     );
 
     return (
-        <View className="flex-1">
+        <View className="flex-1 bg-gray-50">
             <StatusBar barStyle="dark-content" backgroundColor={colors.cream} />
-            <ScrollView 
-                className="flex-1"
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                }
-            >
-                <View className="flex-1 px-6 pt-12">
-                    {/* 헤더 */}
-                    <View className="mb-8">
-                        <TouchableOpacity
-                            className="mb-6"
-                            onPress={() => navigation.goBack()}
-                        >
-                            <View className="flex-row items-center">
-                                <Text className="text-lg mr-2" style={{ color: colors.green }}>←</Text>
-                                <Text className="text-lg font-medium" style={{ color: colors.green }}>뒤로가기</Text>
-                            </View>
-                        </TouchableOpacity>
-                        
-                        <Text className="text-3xl font-bold mb-2" style={{ color: colors.darkGreen }}>
-                            {seniorName}님의 앨범
+            
+            {/* 헤더 */}
+            <View className="px-6 pt-12 pb-4 bg-gray-50">
+                <TouchableOpacity
+                    className="mb-6"
+                    onPress={() => navigation.goBack()}
+                >
+                    <View className="flex-row items-center">
+                        <Ionicons name="arrow-back" size={24} color={colors.green} />
+                        <Text className="text-lg font-medium ml-2" style={{ color: colors.green }}>뒤로가기</Text>
+                    </View>
+                </TouchableOpacity>
+                
+                <Text className="text-3xl font-bold mb-2 text-gray-800">
+                    {seniorName}님의 일기장
+                </Text>
+                <Text className="text-lg text-gray-600">
+                    {diaryList.length}개의 일기
+                </Text>
+            </View>
+
+            {/* 일기 목록 또는 빈 상태 */}
+            {isLoading ? (
+                <View className="flex-1 justify-center items-center">
+                    <Text className="text-xl text-gray-500">
+                        일기를 불러오는 중...
+                    </Text>
+                </View>
+            ) : diaryList.length > 0 ? (
+                <FlatList
+                    data={diaryList}
+                    renderItem={renderDiaryItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    numColumns={1}
+                    contentContainerStyle={{ paddingHorizontal: 16 }}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                    }
+                    showsVerticalScrollIndicator={false}
+                />
+            ) : (
+                <View className="flex-1 justify-center items-center px-8">
+                    <View className="items-center">
+                        <View className="w-24 h-24 rounded-full bg-gray-200 items-center justify-center mb-6">
+                            <Ionicons name="book-outline" size={40} color="#9CA3AF" />
+                        </View>
+                        <Text className="text-xl font-medium text-gray-600 mb-2">
+                            공개된 일기가 없어요
                         </Text>
-                        <Text className="text-lg" style={{ color: colors.darkGreen }}>
-                            {albums.length}개의 일기가 있습니다
+                        <Text className="text-base text-gray-500 text-center leading-6">
+                            시니어가 대화를 완료하고{'\n'}공개하면 여기에서 볼 수 있습니다
                         </Text>
                     </View>
-
-                    {/* 앨범 목록 */}
-                    {isLoading ? (
-                        <View className="items-center py-12">
-                            <Text className="text-lg" style={{ color: colors.darkGreen }}>앨범 목록을 불러오는 중...</Text>
-                        </View>
-                    ) : albums.length > 0 ? (
-                        <View className="mb-8">
-                            {albums.map(renderAlbumItem)}
-                        </View>
-                    ) : (
-                        <View className="items-center py-16 mt-40">
-                            <Text className="text-center text-3xl mb-4" style={{ color: 'black' }}>
-                                공개된 일기가 없습니다.
-                            </Text>
-                            <Text className="text-sm text-center">
-                                시니어가 대화를 완료하고{'\n'} 공개하면 여기에서 볼 수 있습니다.
-                            </Text>
-                        </View>
-                    )}
                 </View>
-            </ScrollView>
+            )}
         </View>
     );
 }

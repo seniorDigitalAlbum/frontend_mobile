@@ -131,12 +131,12 @@ export class MicrophoneTestService {
     /**
      * STT 테스트 실행
      */
-    static async runSTTTest(): Promise<STTTestResult> {
+    static async runSTTTest(onRecordingStarted?: () => void): Promise<STTTestResult> {
         try {
             console.log('STT 테스트 시작...');
             
             // 녹음 시작
-            const recordingStarted = await sttService.startRecording();
+            const recordingStarted = await sttService.startRecording(onRecordingStarted);
             if (!recordingStarted) {
                 return {
                     success: false,

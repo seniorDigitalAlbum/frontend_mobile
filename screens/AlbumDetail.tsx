@@ -1,4 +1,4 @@
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, TextInput, FlatList, Alert, Linking } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, TextInput, FlatList, Alert, Linking, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import albumApiService, { AlbumComment, AlbumPhoto } from '../services/api/album
 import conversationApiService from '../services/api/conversationApiService';
 import { useUser, UserType } from '../contexts/UserContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiClient from '../config/api';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlbumDetail'>;
 
@@ -87,9 +88,23 @@ export default function AlbumDetail({ route, navigation }: Props) {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
+  // 감정에 따른 YouTube Embed URL 매핑 (자동재생 포함)
+  const getEmotionVideoUrl = (emotion: string) => {
+    const videoMap: Record<string, string> = {
+      '기쁨': 'https://www.youtube.com/embed/WvP1g7eic0U?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+      '슬픔': 'https://www.youtube.com/embed/72IuThAlcII?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+      '분노': 'https://www.youtube.com/embed/J-RSBdXwZFE?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+      '불안': 'https://www.youtube.com/embed/pAMl_bWWZnA?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+      '당황': 'https://www.youtube.com/embed/Lj-L6-O62RA?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+      '상처': 'https://www.youtube.com/embed/vnzyC8Lwtik?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0',
+    };
+    return videoMap[emotion] || 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0'; // 기본값
+  };
+
   // YouTube 임베드 URL 생성 함수 (Expo Go 최적화)
-  const getYouTubeEmbedUrl = (videoId: string) => {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0`;
+  const getYouTubeEmbedUrl = (videoUrl: string) => {
+    const videoId = extractYouTubeId(videoUrl);
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=*&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0`;
   };
 
   // 초기 데이터 로드
@@ -160,8 +175,8 @@ export default function AlbumDetail({ route, navigation }: Props) {
     try {
       setLoading(true);
       const [commentsData, photosData, diaryDetailData] = await Promise.all([
-        albumApiService.getComments(conversationId),
-        albumApiService.getPhotos(conversationId),
+        apiClient.get<AlbumComment[]>(`/api/albums/${conversationId}/comments`),
+        apiClient.get<any[]>(`/api/albums/${conversationId}/photos`),
         conversationApiService.getDiaryByConversation(conversationId)
       ]);
       
@@ -187,13 +202,22 @@ export default function AlbumDetail({ route, navigation }: Props) {
     if (!newComment.trim()) return;
 
     try {
-      const comment = await albumApiService.addComment(
-        conversationId, 
-        { content: newComment.trim(), author: user?.name || '가족' }
+      const comment = await apiClient.post<AlbumComment>(
+        `/api/albums/${conversationId}/comments`,
+        { 
+          content: newComment.trim(), 
+          userId: user?.userId
+        }
       );
       
       if (comment) {
-        setComments(prev => [comment, ...prev]);
+        // 댓글 추가 후 즉시 표시하기 위해 사용자 정보 포함
+        const newCommentWithAuthor = {
+          ...comment,
+          authorNickname: user?.name || '사용자',
+          authorProfileImage: user?.profileImage || ''
+        };
+        setComments(prev => [newCommentWithAuthor, ...prev]);
         setNewComment('');
       } else {
         Alert.alert('오류', '댓글 추가에 실패했습니다.');
@@ -225,11 +249,17 @@ export default function AlbumDetail({ route, navigation }: Props) {
           setUploading(true);
           
           // 새로운 업로드 API 사용 (S3 업로드 + 앨범 추가를 한 번에)
-          const photo = await albumApiService.addPhotoWithUpload(
-            conversationId,
-            result.assets[0].uri,
-            user?.name || '가족'
-          );
+          const formData = new FormData();
+          formData.append('file', {
+            uri: result.assets[0].uri,
+            type: 'image/jpeg',
+            name: 'image.jpg',
+          } as any);
+          
+          const photo = await apiClient.request<any>(`/api/albums/${conversationId}/photos/upload`, {
+            method: 'POST',
+            body: formData,
+          });
           
           if (photo) {
             // 현재 사진 개수 확인 (업데이트 전)
@@ -241,13 +271,12 @@ export default function AlbumDetail({ route, navigation }: Props) {
             // 첫 번째 사진이면 표지로 설정 (사진 추가 전에 확인)
             if (currentPhotoCount === 0) {
               console.log('첫 번째 사진 - 표지로 설정 시도:', photo.id);
-              const coverSetSuccess = await albumApiService.setCoverPhoto(conversationId, photo.id);
-              
-              if (coverSetSuccess) {
+              try {
+                await apiClient.put(`/api/albums/${conversationId}/photos/${photo.id}/set-cover`);
                 setPhotos(prev => prev.map(p => ({ ...p, isCover: p.id === photo.id })));
                 console.log('표지 설정 완료');
-              } else {
-                console.log('표지 설정 실패 (무시됨) - 사진은 정상 추가됨');
+              } catch (error) {
+                console.log('표지 설정 실패 (무시됨) - 사진은 정상 추가됨:', error);
                 // 표지 설정 실패해도 사진 추가는 성공으로 처리
               }
             } else {
@@ -275,18 +304,40 @@ export default function AlbumDetail({ route, navigation }: Props) {
   // 앨범 표지 설정
   const handleSetAsCover = async (photoId: number) => {
     try {
-      const success = await albumApiService.setCoverPhoto(conversationId, photoId);
+      await apiClient.put(`/api/albums/${conversationId}/photos/${photoId}/set-cover`);
+      const success = true;
       if (success) {
         setPhotos(prev => prev.map(photo => ({
           ...photo,
           isCover: photo.id === photoId
         })));
+        
+        // 표지 설정 후 AsyncStorage에 최신 표지 정보 저장
+        const selectedPhoto = photos.find(p => p.id === photoId);
+        if (selectedPhoto) {
+          const coverPhotoInfo = {
+            imageUrl: selectedPhoto.imageUrl,
+            conversationId: conversationId,
+            diary: diary?.title || '일기',
+            finalEmotion: finalEmotion,
+            createdAt: selectedPhoto.createdAt
+          };
+          await AsyncStorage.setItem('latestCoverPhoto', JSON.stringify(coverPhotoInfo));
+        }
+        
         Alert.alert('완료!', '표지로 설정 되었어요. 처음 화면에서 확인 해보세요.');
         
-        // Home의 albumHero 업데이트를 위한 정보 저장
+        // GuardianMain의 앨범 사진 업데이트를 위한 정보 저장
         const coverPhoto = photos.find(p => p.id === photoId);
         if (coverPhoto) {
           try {
+            // 시니어의 표지 사진 정보를 AsyncStorage에 저장
+            const seniorCoverPhotoInfo = {
+              imageUrl: coverPhoto.imageUrl,
+              conversationId: conversationId,
+              createdAt: coverPhoto.createdAt
+            };
+            await AsyncStorage.setItem(`seniorCoverPhoto_${user?.id}`, JSON.stringify(seniorCoverPhotoInfo));
             const coverPhotoData = {
               conversationId,
               imageUrl: coverPhoto.imageUrl,
@@ -316,7 +367,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
     <View className="bg-gray-50 rounded-lg p-4 mb-3">
       <View className="flex-row justify-between items-center mb-2">
         <Text className="font-semibold text-lg text-gray-800">
-          {item.author}
+          {item.authorNickname}
         </Text>
         <Text className="text-sm text-gray-500">
           {formatDateTime(item.createdAt)}
@@ -362,10 +413,10 @@ export default function AlbumDetail({ route, navigation }: Props) {
           {formatDateTime(item.createdAt)}
         </Text>
         
-        {!item.isCover && (
+        {!item.isCover && userType === 'SENIOR' && (
           <TouchableOpacity
             onPress={() => handleSetAsCover(item.id)}
-            className="rounded-full px-3 py-1 mt-2"
+            className="rounded-full px-3 py-1 mt-2 mb-2"
             style={{ alignSelf: 'flex-start', backgroundColor: colors.green }}
           >
             <Text className="text-white text-sm font-medium">표지로 설정</Text>
@@ -378,7 +429,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
   // 앨범 공개 상태 설정 함수
   const handleSetVisibility = async (publicStatus: boolean) => {
     try {
-      await albumApiService.updateAlbumVisibility(conversationId, publicStatus);
+      await apiClient.put(`/api/albums/${conversationId}/visibility`, { isPublic: publicStatus });
       setIsPublic(publicStatus);
       
       Alert.alert(
@@ -459,7 +510,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
           />
         </TouchableOpacity>
                 <Text className="font-bold text-xl text-gray-800">
-                  {displayTitle || '앨범 상세'}
+                  {displayTitle || '일기'}
                 </Text>
         
         {/* 공개/비공개 버튼들 - 시니어만 표시 */}
@@ -518,6 +569,29 @@ export default function AlbumDetail({ route, navigation }: Props) {
             />
           </View>
         </View>
+        {/* 음악 로딩 바 UI */}
+        <View className="items-center py-8 px-6">
+          <Text className="font-bold mb-2 text-lg text-gray-800">
+            음악이 재생 중입니다
+          </Text>
+
+          {/* 로딩 바 */}
+          <View className="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <View
+              className="bg-gradient-to-r from-pink-400 to-purple-500 h-2 rounded-full"
+              style={{
+                width: '100%',
+                animation: 'pulse 2s ease-in-out infinite'
+              }}
+            />
+          </View>
+
+          <View className="flex-row items-center space-x-2">
+            <View className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" />
+            <View className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+            <View className="w-2 h-2 bg-pink-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+          </View>
+        </View>
 
         {/* 제목 */}
         <View className="items-center mb-6">
@@ -555,27 +629,33 @@ export default function AlbumDetail({ route, navigation }: Props) {
           return musicList && musicList.length > 0;
         })() && (
           <View className="px-6 mb-8">
-            <View style={[commonStyles.cardStyle, { padding: 24 }]}>
-              <Text className="font-semibold mb-4 text-2xl text-gray-800">
-                🎵 추천 음악
-              </Text>
+            <View style={[commonStyles.cardStyle, { opacity: 0, pointerEvents: 'none' }]}>
+                {/* 숨겨진 YouTube 플레이어 */}
+                <View style={{ position: 'absolute', left: -9999, top: -9999, width: 1, height: 1, opacity: 0 }}>
               {(() => {
                 const musicList = diaryData?.musicRecommendations || [];
                 const firstMusic = musicList[0];
                 const videoId = firstMusic?.youtubeVideoId || extractYouTubeId(firstMusic?.youtubeLink || '') || 'dQw4w9WgXcQ';
-                const embedUrl = getYouTubeEmbedUrl(videoId);
                 
                 console.log('🎵 AlbumDetail 유튜브 정보:', {
                   musicList,
                   firstMusic,
-                  videoId,
-                  embedUrl
-                });
-                
-                return (
+                      videoId
+                    });
+
+                  return Platform.OS === 'web' ? (
+                    <iframe
+                      width="1"
+                      height="1"
+                      src={getEmotionVideoUrl(finalEmotion)}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
                   <WebView
-                    style={{ height: 200, width: '100%', backgroundColor: '#000' }}
-                    source={{ uri: getYouTubeEmbedUrl('bKSGV2VPmIs') }}
+                      style={{ width: 1, height: 1 }}
+                      source={{ uri: getEmotionVideoUrl(finalEmotion) }}
                     allowsInlineMediaPlayback={true}
                     mediaPlaybackRequiresUserAction={false}
                     allowsFullscreenVideo={true}
@@ -587,7 +667,6 @@ export default function AlbumDetail({ route, navigation }: Props) {
                     userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
                     onError={(error) => {
                       console.error('YouTube 플레이어 오류:', error);
-                      Alert.alert('재생 오류', '동영상을 재생할 수 없습니다. YouTube 앱에서 시도해보세요.');
                     }}
                     onLoad={() => console.log('YouTube 플레이어 로드 완료')}
                     onHttpError={(syntheticEvent) => {
@@ -611,6 +690,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
                   />
                 );
               })()}
+                </View>
             </View>
           </View>
         )}
@@ -651,7 +731,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
              <TouchableOpacity
                  onPress={handleAddPhoto}
                  disabled={uploading}
-                 className="rounded-full px-4 py-2 items-center"
+                 className="rounded-full px-4 py-2 items-center mt-4"
                  style={{ backgroundColor: uploading ? '#9CA3AF' : colors.green }}
                >
                 <Text className="text-white font-medium text-2xl items-center">
@@ -665,7 +745,7 @@ export default function AlbumDetail({ route, navigation }: Props) {
         <View className="px-6 mb-8">
           <View style={[commonStyles.cardStyle, { padding: 24 }]}>
             <Text className="font-semibold mb-4 text-xl text-gray-800">
-              댓글 ({comments.length})
+              가족 댓글 {comments.length}개가 있습니다
             </Text>
 
             {/* 댓글 입력 */}

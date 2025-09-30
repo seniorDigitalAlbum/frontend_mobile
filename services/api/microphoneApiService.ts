@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../../config/api';
+import { apiClient } from '../../config/api';
 
 // 마이크 세션 관련 타입 정의
 export interface MicrophoneSession {
@@ -63,25 +63,14 @@ export interface SpeechEndResponse {
 }
 
 class MicrophoneApiService {
-  private baseUrl = `${API_BASE_URL}/api/microphone`;
-
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers,
-        },
-        ...options,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
+      console.log('🔄 MicrophoneApiService.request 호출:', endpoint);
+      const result = await apiClient.request<T>(`/api/microphone${endpoint}`, options);
+      console.log('✅ MicrophoneApiService.request 성공:', endpoint);
+      return result;
     } catch (error) {
-      console.error('Microphone API request failed:', error);
+      console.error('❌ Microphone API request failed:', error);
       throw error;
     }
   }

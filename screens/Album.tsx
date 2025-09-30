@@ -5,9 +5,8 @@ import { useDiary } from '../contexts/DiaryContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import conversationApiService, { Conversation as ConversationType } from '../services/api/conversationApiService';
-import albumApiService from '../services/api/albumApiService';
-import { MockService, shouldUseMock } from '../services/mockService';
+import { Conversation as ConversationType } from '../services/api/conversationApiService';
+import { apiClient, API_ENDPOINTS } from '../config/api';
 import { useUser } from '../contexts/UserContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../styles/commonStyles';
@@ -24,7 +23,7 @@ export default function Album() {
     const isLoadingRef = useRef(false);
 
     const { user } = useUser();
-    const userId = user?.userId || "1"; // UserContext에서 가져온 실제 사용자 ID
+    const userId = user?.userId; // UserContext에서 가져온 실제 사용자 ID
 
     // 감정에 따른 이미지 매핑
     const getEmotionImage = (emotion: string) => {
@@ -43,14 +42,22 @@ export default function Album() {
     useEffect(() => {
         console.log('Album 컴포넌트 마운트됨');
         loadAlbumsFromAPI();
-    }, []);
+    }, [userId]); // userId가 변경될 때마다 다시 로드
 
     const loadAlbumsFromAPI = async () => {
         try {
             setLoading(true);
+            
+            // userId가 없으면 로그인하지 않은 상태
+            if (!userId) {
+                console.log('사용자가 로그인하지 않았습니다.');
+                setDiaries([]);
+                return;
+            }
+            
             console.log('사용자 대화 목록 API 호출 시작:', userId);
             
-            const userAlbums = await conversationApiService.getConversationsByUser(userId);
+            const userAlbums = await apiClient.get<ConversationType[]>('/api/conversations/user');
             console.log('API에서 받은 대화 목록:', userAlbums);
             
             // COMPLETED 상태인 대화만 필터링
@@ -77,7 +84,7 @@ export default function Album() {
                 }
 
                 // 앨범 표지 사진 조회
-                const albumPhotos = await albumApiService.getPhotos(conversation.id);
+                const albumPhotos = await apiClient.get<any[]>(`/api/albums/${conversation.id}/photos`);
                 const coverPhoto = albumPhotos.find(photo => photo.isCover);
                 
                 // 제목과 내용을 분리하는 함수
@@ -123,7 +130,7 @@ export default function Album() {
                     }
                 };
                 
-                const { title: extractedTitle, content: cleanedContent } = separateTitleAndContent(conversation.diary, conversation.dominantEmotion);
+                const { title: extractedTitle, content: cleanedContent } = separateTitleAndContent(conversation.diary || '', conversation.dominantEmotion || '기쁨');
                 
                 return {
                     id: conversation.id,
@@ -135,7 +142,7 @@ export default function Album() {
                     preview: cleanedContent ? cleanedContent.substring(0, 100) + '...' : '일기가 생성 중입니다...',
                     imageUrl: coverPhoto ? coverPhoto.imageUrl : 'https://picsum.photos/200/200?random=' + conversation.id,
                     content: cleanedContent || '일기가 아직 생성되지 않았습니다.',
-                    isPending: conversation.processingStatus !== 'COMPLETED',
+                    isPending: (conversation as any).processingStatus !== 'COMPLETED',
                     emotion: conversation.dominantEmotion || '기쁨'
                 };
             }));
@@ -162,7 +169,7 @@ export default function Album() {
         try {
             // 백엔드에서 일기 상세 정보 조회
             console.log('일기 상세 정보 API 호출:', diary.id);
-            const diaryDetail = await conversationApiService.getDiaryByConversation(diary.id);
+            const diaryDetail = await apiClient.get<any>(`/api/conversations/${diary.id}/diary`);
             
             if (diaryDetail) {
                 // 앨범 상세 페이지로 이동
@@ -172,7 +179,7 @@ export default function Album() {
                     title: diaryDetail.title, // 생성된 제목 전달
                     finalEmotion: diaryDetail.emotionSummary?.dominantEmotion || '기쁨',
                     musicRecommendations: diaryDetail.musicRecommendations || []
-                });
+                } as any);
             } else {
                 console.error('일기 상세 정보를 찾을 수 없습니다.');
                 // Context에서 일기 데이터 확인 (fallback)
@@ -184,7 +191,7 @@ export default function Album() {
                         title: diaryFromContext.title || '특별한 하루', // fallback 제목
                         finalEmotion: '기쁨',
                         musicRecommendations: []
-                    });
+                    } as any);
                 }
             }
         } catch (error) {
@@ -197,7 +204,7 @@ export default function Album() {
                     diary: diaryFromContext.content,
                     title: diaryFromContext.title || '특별한 하루', // fallback 제목
                     finalEmotion: '기쁨'
-                });
+                } as any);
             }
         }
     };

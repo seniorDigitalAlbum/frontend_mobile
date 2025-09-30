@@ -30,10 +30,10 @@ export default function AlbumHero({ imageUrl, onPress, isEmpty }: AlbumHeroProps
             <Ionicons name="book-outline" size={40} color="#9CA3AF" />
           </View>
           <Text className="text-3xl font-semibold text-gray-600 mb-2 text-center">
-            아직 일기가 없어요
+            표지가 없어요.
           </Text>
           <Text className="text-lg text-gray-500 text-center leading-6">
-            질문을 눌러{'\n'}일기를 만들어주세요
+            일기에서 표지 설정을 해주세요.
           </Text>
         </View>
       </TouchableOpacity>

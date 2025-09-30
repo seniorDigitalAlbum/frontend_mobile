@@ -2,7 +2,7 @@ import { Alert, Linking } from 'react-native';
 import { Audio } from 'expo-av';
 import conversationApiService from './api/conversationApiService';
 import microphoneApiService from './api/microphoneApiService';
-import { API_BASE_URL } from '../config/api';
+import { apiClient } from '../config/api';
 
 // 카메라 세션 관련 타입 정의
 export interface CameraSession {
@@ -39,25 +39,14 @@ export interface ConversationStartResult {
  * 통합된 카메라 관련 서비스
  */
 export class CameraService {
-    private static baseUrl = `${API_BASE_URL}/api/camera`;
-
     private static async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
         try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options?.headers,
-                },
-                ...options,
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
+            console.log('🔄 CameraService.request 호출:', endpoint);
+            const result = await apiClient.request<T>(`/api/camera${endpoint}`, options);
+            console.log('✅ CameraService.request 성공:', endpoint);
+            return result;
         } catch (error) {
-            console.error('API request failed:', error);
+            console.error('❌ Camera API request failed:', error);
             throw error;
         }
     }

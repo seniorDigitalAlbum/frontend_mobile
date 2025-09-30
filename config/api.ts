@@ -27,7 +27,7 @@ const isWeb = Platform.OS === 'web';
 export const getYoloEmotionApiUrl = () => {
   if (isDevelopment) {
     if (isWeb) {
-      return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_DEV_WEB || 'http://localhost:8000';
+      return process.env.EXPO_PUBLIC_YOLO_EMOTION_API_URL_DEV_WEB || 'http://35.202.26.247:8000';
     } else {
       // 네이티브(Expo Go) 환경일 때 동적 ip 사용
       const devServerIp = getDevServerIp();
@@ -45,7 +45,7 @@ export const getYoloEmotionApiUrl = () => {
 export const getKoBERTApiUrl = () => {
   if (isDevelopment) {
     if (isWeb) {
-      return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV_WEB || 'http://localhost:8001';
+      return process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV_WEB || 'http://35.202.26.247:8001';
     } else {
       // 네이티브(Expo Go) 환경일 때 환경변수 우선 확인
       console.log('🔍 KoBERT 환경변수 확인:', process.env.EXPO_PUBLIC_KOBERT_API_URL_DEV);
@@ -224,34 +224,31 @@ class ApiClient {
       if (Platform.OS === 'web') {
         // 웹에서는 localStorage 사용
         const userData = localStorage.getItem('user');
-        console.log('🔍 웹에서 토큰 가져오기 시도:', userData ? '데이터 있음' : '데이터 없음');
-        console.log('🔍 localStorage 전체 내용:', {
-          user: localStorage.getItem('user'),
-          userType: localStorage.getItem('userType'),
-          keys: Object.keys(localStorage)
-        });
+        console.log('🔍 apiClient 웹에서 토큰 가져오기 시도:', userData ? '데이터 있음' : '데이터 없음');
         if (userData) {
           const user = JSON.parse(userData);
+          console.log('🔍 apiClient 웹에서 사용자 데이터:', user);
           const token = user.token || null;
-          console.log('🔑 웹에서 토큰 상태:', { hasToken: !!token, tokenLength: token?.length || 0 });
+          console.log('🔑 apiClient 웹에서 토큰 상태:', { hasToken: !!token, tokenLength: token?.length || 0 });
           return token;
         }
       } else {
         // React Native에서는 AsyncStorage 사용
         const AsyncStorage = await import('@react-native-async-storage/async-storage');
         const userData = await AsyncStorage.default.getItem('user');
-        console.log('🔍 네이티브에서 토큰 가져오기 시도:', userData ? '데이터 있음' : '데이터 없음');
+        console.log('🔍 apiClient 네이티브에서 토큰 가져오기 시도:', userData ? '데이터 있음' : '데이터 없음');
         if (userData) {
           const user = JSON.parse(userData);
+          console.log('🔍 apiClient 네이티브에서 사용자 데이터:', user);
           const token = user.token || null;
-          console.log('🔑 네이티브에서 토큰 상태:', { hasToken: !!token, tokenLength: token?.length || 0 });
+          console.log('🔑 apiClient 네이티브에서 토큰 상태:', { hasToken: !!token, tokenLength: token?.length || 0 });
           return token;
         }
       }
     } catch (error) {
-      console.error('❌ Failed to get token from storage:', error);
+      console.error('❌ apiClient Failed to get token from storage:', error);
     }
-    console.log('❌ 토큰을 가져올 수 없음');
+    console.log('❌ apiClient 토큰을 가져올 수 없음');
     return null;
   }
 
@@ -263,7 +260,9 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     try {
+      console.log('🚀 apiClient.request 시작:', endpoint);
       const token = await this.getToken();
+      console.log('🔑 apiClient.request 토큰 결과:', { hasToken: !!token, tokenLength: token?.length || 0 });
       
       const headers: Record<string, string> = {
         ...this.defaultHeaders,
@@ -284,40 +283,6 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        // 401 Unauthorized인 경우 토큰이 무효화된 것으로 간주
-        if (response.status === 401) {
-          console.log('🔐 401 Unauthorized - 토큰이 무효화됨');
-          // 모든 사용자 데이터 제거
-          try {
-            if (Platform.OS === 'web') {
-              // 웹에서는 localStorage 사용 - 모든 사용자 데이터 제거
-              localStorage.removeItem('user');
-              localStorage.removeItem('userType');
-              console.log('🧹 모든 사용자 데이터 제거 완료');
-              
-              // 웹에서는 페이지 리로드하여 로그인 화면으로 이동
-              if (isDevelopment) {
-                window.location.href = '/login';
-              } else {
-                window.location.href = '/frontend_mobile/login';
-              }
-            } else {
-              // React Native에서는 AsyncStorage 사용 - 모든 사용자 데이터 제거
-              const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-              await AsyncStorage.multiRemove(['user', 'userType']);
-              console.log('🧹 모든 사용자 데이터 제거 완료');
-              
-              // React Native에서는 네비게이션을 통해 로그인 화면으로 이동
-              // 이는 전역 이벤트를 통해 처리됩니다
-              if (typeof window !== 'undefined' && window.dispatchEvent) {
-                window.dispatchEvent(new CustomEvent('auth:logout'));
-              }
-            }
-          } catch (cleanupError) {
-            console.error('❌ 토큰 무효화 후 정리 실패:', cleanupError);
-          }
-        }
-        
         const errorText = await response.text();
         let errorMessage = `HTTP error! status: ${response.status}`;
         
@@ -331,7 +296,20 @@ class ApiClient {
         throw new Error(errorMessage);
       }
 
-      return await response.json();
+      // 응답이 비어있는 경우 (예: 204 No Content, 200 OK with empty body)
+      const contentType = response.headers.get('content-type');
+      const contentLength = response.headers.get('content-length');
+      
+      if (contentLength === '0' || !contentType?.includes('application/json')) {
+        return {} as T;
+      }
+
+      const responseText = await response.text();
+      if (!responseText.trim()) {
+        return {} as T;
+      }
+
+      return JSON.parse(responseText);
     } catch (error) {
       console.error('API request failed:', error);
       throw error;

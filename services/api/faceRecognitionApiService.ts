@@ -16,7 +16,7 @@ interface FaceRecognitionResult {
 }
 
 // 얼굴 인식 AI 모델 호출 API
-export const analyzeFaceApi = async (faceData: FaceData): Promise<FaceRecognitionResult> => {
+const analyzeFaceApi = async (faceData: FaceData): Promise<FaceRecognitionResult> => {
   try {
     // base64 이미지 데이터를 AI 모델에 전송
     const response = await fetch('YOUR_AI_ENDPOINT/face-analysis', {
@@ -54,3 +54,19 @@ export const analyzeFaceApi = async (faceData: FaceData): Promise<FaceRecognitio
     };
   }
 };
+
+// Default export로 서비스 객체 생성
+const faceRecognitionApiService = {
+  analyzeFaceApi,
+  analyzeFacialEmotion: analyzeFaceApi, // 기존 코드와 호환성을 위해
+  analyzeTextEmotion: async (text: string) => {
+    // 텍스트 감정 분석 구현 필요
+    return { success: false, error: 'Not implemented' };
+  },
+  combineEmotionAnalysis: async (data: any) => {
+    // 통합 감정 분석 구현 필요
+    return { success: false, error: 'Not implemented' };
+  }
+};
+
+export default faceRecognitionApiService;

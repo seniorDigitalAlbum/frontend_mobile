@@ -158,6 +158,8 @@ export type RootStackParamList = {
     conversationId: number;
     diary: string;
     finalEmotion: string;
+    title?: string;
+    musicRecommendations?: any[];
   };
   TestScreen: undefined;
 };
@@ -248,7 +250,6 @@ function ConversationFlowScreen({ route, navigation }: ConversationFlowScreenPro
   
   const handleFlowComplete = (result: any) => {
     // 플로우 완료 시 처리 로직
-    console.log('ConversationFlow 완료:', result);
     // 필요에 따라 다른 화면으로 네비게이션
   };
   
@@ -372,7 +373,6 @@ function ProtectedScreen({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isLoading && (!user || !user.token)) {
-      console.log('인증되지 않은 사용자 또는 JWT 토큰 없음 - Login으로 리다이렉트');
       navigation.navigate('Login' as any);
     }
   }, [user, isLoading, navigation]);
@@ -414,9 +414,6 @@ function AppNavigator() {
         
         if (userData) {
           const user = JSON.parse(userData);
-          console.log('🔍 스토리지에서 사용자 데이터 확인:', user);
-          console.log('🔍 user.token:', user.token);
-          console.log('🔍 user.userType:', user.userType);
           
           // JWT 토큰이 있어야만 홈으로 이동 가능
           if (user.token) {
@@ -426,28 +423,22 @@ function AppNavigator() {
                                   user.userType !== '' && 
                                   (user.userType === UserType.SENIOR || user.userType === UserType.GUARDIAN);
             
-            console.log('🔍 hasValidUserType:', hasValidUserType);
             
             if (hasValidUserType) {
-              console.log('✅ JWT 토큰과 userType 모두 있음 - 홈으로 이동:', user.userType);
               if (user.userType === UserType.GUARDIAN) {
                 setInitialRoute("GuardianMain");
               } else if (user.userType === UserType.SENIOR) {
                 setInitialRoute("MainTabs");
               } else {
-                console.log('⚠️ 알 수 없는 userType:', user.userType);
                 setInitialRoute("Login");
               }
             } else {
-              console.log('🆕 JWT 토큰은 있지만 userType이 없음 - Login으로 이동');
               setInitialRoute("Login");
             }
           } else {
-            console.log('🚫 JWT 토큰 없음 - Login으로 이동');
             setInitialRoute("Login");
           }
         } else {
-          console.log('스토리지에서 사용자 데이터 없음');
           setInitialRoute("Login");
         }
       } catch (error) {
@@ -462,7 +453,6 @@ function AppNavigator() {
   // 딥링크 처리
   useEffect(() => {
     const handleDeepLink = (url: string) => {
-      console.log('🔗 딥링크 수신:', url);
       
       if (url.startsWith('dearmind://kakao-auth')) {
         const urlParams = new URLSearchParams(url.split('?')[1]);
@@ -476,7 +466,6 @@ function AppNavigator() {
         }
         
         if (token) {
-          console.log('카카오 콜백 토큰:', token);
           // UserRoleSelection 화면으로 직접 이동
           navigationRef.current?.navigate('UserRoleSelection' as any, { 
             token,

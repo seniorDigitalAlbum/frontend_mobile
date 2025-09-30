@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useUser } from '../contexts/UserContext';
 import sttService from '../services/audio/sttService';
+import ttsService from '../services/audio/ttsService';
 import { ConversationService, EmotionCapture } from '../services/conversationService';
 import { ConversationUtils } from '../utils/conversationUtils';
 
@@ -23,6 +24,7 @@ export interface UseConversationReturn {
     hasAIResponse: boolean;
     emotionCaptures: EmotionCapture[];
     isQuestionTTSPlayed: boolean;
+    isCameraVisible: boolean;
     userId: string;
     questionId: string;
     conversationId: number | undefined;
@@ -35,6 +37,8 @@ export interface UseConversationReturn {
     handleAnswerRecordingComplete: (audioUri: string, questionId: string) => Promise<void>;
     handleAnswerRecordingStart: (questionId: string) => Promise<void>;
     handleAIResponse: (userText: string, audioBase64?: string, conversationMessageId?: number) => Promise<void>;
+    handleShowAIMessage: () => void;
+    handleShowCamera: () => void;
     setCurrentQuestionText: (text: string) => void;
     setTranscribedText: (text: string | null) => void;
     setEmotionCaptures: (captures: EmotionCapture[]) => void;
@@ -58,6 +62,7 @@ export const useConversation = (params: UseConversationParams): UseConversationR
     const [hasAIResponse, setHasAIResponse] = useState(false);
     const [emotionCaptures, setEmotionCaptures] = useState<EmotionCapture[]>([]);
     const [isQuestionTTSPlayed, setIsQuestionTTSPlayed] = useState(false);
+    const [isCameraVisible, setIsCameraVisible] = useState(false);
 
     // AI 질문 메시지 저장
     useEffect(() => {
@@ -67,7 +72,6 @@ export const useConversation = (params: UseConversationParams): UseConversationR
                     await ConversationService.saveAIMessage(params.conversationId, safeQuestionText);
                     setIsQuestionTTSPlayed(true);
                 } catch (error) {
-                    console.error('질문 초기화 실패:', error);
                 }
             }
         };
@@ -84,7 +88,6 @@ export const useConversation = (params: UseConversationParams): UseConversationR
 
     // 질문 완료 핸들러
     const handleQuestionComplete = useCallback(() => {
-        console.log('🎵 TTS 재생 완료 - 마이크 버튼 표시');
         setIsQuestionComplete(true);
     }, []);
 
@@ -96,7 +99,7 @@ export const useConversation = (params: UseConversationParams): UseConversationR
                 const result = await ConversationService.endConversation(params.conversationId);
                 
                 if (result.success && ConversationUtils.shouldEndConversation(result.data)) {
-                    navigation.navigate('ConversationEndLoading', {
+                    (navigation as any).navigate('ConversationEndLoading', {
                         conversationId: params.conversationId
                     });
                 }
@@ -111,12 +114,14 @@ export const useConversation = (params: UseConversationParams): UseConversationR
     const handleAnswerRecordingComplete = useCallback(async (audioUri: string, questionId: string) => {
         console.log(`답변 녹음 완료 - 질문 ID: ${questionId}, 오디오 URI: ${audioUri}`);
         setIsRecording(false);
+        setIsCameraVisible(false); // 녹음 완료 시 카메라 숨김
     }, []);
 
     // 답변 녹음 시작 핸들러
     const handleAnswerRecordingStart = useCallback(async (questionId: string) => {
         console.log(`답변 녹음 시작 - 질문 ID: ${questionId}`);
         setIsRecording(true);
+        setIsCameraVisible(true); // 녹음 시작 시 카메라 표시
     }, []);
 
     // AI 응답 핸들러
@@ -135,7 +140,6 @@ export const useConversation = (params: UseConversationParams): UseConversationR
         
         // STT 결과 유효성 검사
         if (!ConversationUtils.isValidSTTResult(userText)) {
-            console.log('STT 결과가 유효하지 않음 - TTS로 재시도 메시지 재생');
             
             const result = await ConversationService.playSTTErrorMessage();
             if (result.success) {
@@ -167,14 +171,25 @@ export const useConversation = (params: UseConversationParams): UseConversationR
                     setCurrentQuestionText(gptResponse.data.aiResponse);
                     setHasAIResponse(true);
                     
-                    // 2. 잠시 대기 후 TTS 재생
-                    setTimeout(async () => {
+                    // 2. 이전 TTS 완전 정리 후 새 TTS 재생
+                    try {
+                        // 이전 TTS 완전 정리
+                        await ttsService.stopAudio();
+                        
+                        // 새 TTS 재생
                         await ConversationService.playAIResponseTTS(gptResponse.data.aiResponse);
                         
                         // 3. TTS 재생 완료 후 마이크 버튼 다시 표시
                         setIsQuestionComplete(true);
                         setIsProcessingResponse(false);
-                    }, 500); // 0.5초 대기
+                        setIsCameraVisible(true); // AI 응답 후 카메라 표시
+                    } catch (ttsError) {
+                        console.error('TTS 재생 실패:', ttsError);
+                        // TTS 실패해도 UI는 정상 상태로 복구
+                        setIsQuestionComplete(true);
+                        setIsProcessingResponse(false);
+                        setIsCameraVisible(true);
+                    }
                 } else {
                     console.error('AI 응답 생성 실패');
                     setIsProcessingResponse(false);
@@ -188,6 +203,16 @@ export const useConversation = (params: UseConversationParams): UseConversationR
             setIsQuestionComplete(true);
         }
     }, [emotionCaptures]);
+
+    // AI 메시지 보기 핸들러
+    const handleShowAIMessage = useCallback(() => {
+        setIsCameraVisible(false);
+    }, []);
+
+    // 카메라로 돌아가기 핸들러
+    const handleShowCamera = useCallback(() => {
+        setIsCameraVisible(true);
+    }, []);
 
     // 감정 캡처 추가
     const addEmotionCapture = useCallback((capture: EmotionCapture) => {
@@ -205,6 +230,7 @@ export const useConversation = (params: UseConversationParams): UseConversationR
         hasAIResponse,
         emotionCaptures,
         isQuestionTTSPlayed,
+        isCameraVisible,
         userId,
         questionId: params.questionId || 'default-question-id',
         conversationId: params.conversationId,
@@ -217,6 +243,8 @@ export const useConversation = (params: UseConversationParams): UseConversationR
         handleAnswerRecordingComplete,
         handleAnswerRecordingStart,
         handleAIResponse,
+        handleShowAIMessage,
+        handleShowCamera,
         setCurrentQuestionText,
         setTranscribedText,
         setEmotionCaptures,

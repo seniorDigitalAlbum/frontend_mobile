@@ -23,12 +23,9 @@ export class SeniorQuestionService {
             // 먼저 페이지네이션 API 시도
             try {
                 const result = await questionApiService.getQuestionsPaginated(0, itemsPerPage);
-                console.log('Pagination API result:', result);
-                console.log('Questions count:', result.questions?.length);
 
                 // API가 모든 질문을 반환하는 경우 클라이언트 사이드에서 나누기
                 if (result.questions && result.questions.length > itemsPerPage) {
-                    console.log('API returned all questions, using client-side pagination');
                     return {
                         questions: result.questions.slice(0, itemsPerPage),
                         allQuestions: result.questions,
@@ -44,13 +41,11 @@ export class SeniorQuestionService {
                     };
                 }
             } catch (paginationError) {
-                console.log('Pagination API not available, falling back to full list:', paginationError);
             }
 
             // fallback: 모든 질문을 가져와서 클라이언트 사이드에서 페이지네이션
             const fetchedQuestions = await questionService.getQuestions();
             const initialQuestions = fetchedQuestions.slice(0, itemsPerPage);
-            console.log(`Initial load: ${initialQuestions.length} questions (itemsPerPage: ${itemsPerPage})`);
             
             return {
                 questions: initialQuestions,
@@ -91,7 +86,6 @@ export class SeniorQuestionService {
                         currentPage: nextPage
                     };
                 } catch (paginationError) {
-                    console.log('Pagination API failed, using client-side pagination:', paginationError);
                 }
             }
 
@@ -101,7 +95,6 @@ export class SeniorQuestionService {
             const nextQuestions = allQuestions.slice(startIndex, endIndex);
 
             if (nextQuestions.length > 0) {
-                console.log(`Loading more: ${nextQuestions.length} questions (page: ${nextPage})`);
                 return {
                     questions: [...currentQuestions, ...nextQuestions],
                     hasMore: endIndex < allQuestions.length,
@@ -115,7 +108,6 @@ export class SeniorQuestionService {
                 };
             }
         } catch (error) {
-            console.error('Failed to load more questions:', error);
             return {
                 questions: currentQuestions,
                 hasMore: false,
@@ -132,7 +124,6 @@ export class SeniorQuestionService {
             const randomQ = await questionApiService.getRandomQuestion();
             return randomQ;
         } catch (error) {
-            console.log('Random question API not available, using fallback:', error);
             // fallback: 모든 질문에서 랜덤하게 선택
             try {
                 const allQuestions = await questionService.getQuestions();
@@ -162,12 +153,10 @@ export class SeniorCoverPhotoService {
             
             if (storedInfo) {
                 const parsedInfo = JSON.parse(storedInfo);
-                console.log('📸 표지 사진 정보 로드 완료:', parsedInfo);
                 return parsedInfo;
             }
             return null;
         } catch (error) {
-            console.log('❌ 표지 사진 정보 로드 실패:', error);
             return null;
         }
     }
