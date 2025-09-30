@@ -296,7 +296,11 @@ class ApiClient {
               console.log('🧹 모든 사용자 데이터 제거 완료');
               
               // 웹에서는 페이지 리로드하여 로그인 화면으로 이동
-              window.location.href = '/login';
+              if (isDevelopment) {
+                window.location.href = '/login';
+              } else {
+                window.location.href = '/frontend_mobile/login';
+              }
             } else {
               // React Native에서는 AsyncStorage 사용 - 모든 사용자 데이터 제거
               const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
