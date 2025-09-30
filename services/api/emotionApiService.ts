@@ -164,19 +164,7 @@ export const sendFacialEmotionAnalysis = async (
     
     console.log('변환된 요청 데이터:', requestData);
     
-    const response = await fetch(`${API_BASE_URL}/api/emotion-analysis/facial`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestData),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
+    const result = await apiClient.post('/api/emotion-analysis/facial', requestData);
     console.log('얼굴 감정 분석 결과 전송 성공:', result);
     return result;
   } catch (error) {

@@ -149,7 +149,7 @@ export default function GuardianConnectionResult({
                                     const { UserType } = await import('../contexts/UserContext');
                                     await updateUser({ userType: UserType.GUARDIAN });
                                     
-                                    alert(`${selectedSenior.name}님과 연결하기가 전송되었습니다.\n시니어의 승인을 기다려주세요.`);
+                                    alert(`${selectedSenior.name}님과 연결되었습니다.`);
                                     
                                     // 연결 요청 후 GuardianMain으로 이동
                                     navigation.navigate('GuardianMain');
@@ -158,6 +158,13 @@ export default function GuardianConnectionResult({
                                 }
                             } catch (error) {
                                 console.error('시니어 연결 실패:', error);
+                                
+                                // 이미 관계가 존재하는 경우의 에러 처리
+                                if (error instanceof Error && error.message.includes('이미 관계가 존재합니다')) {
+                                    alert(`${selectedSenior.name}님은 이미 연결된 사용자입니다.`);
+                                    return;
+                                }
+                                
                                 alert('연결하기 중 오류가 발생했습니다. 다시 시도해주세요.');
                             }
                         }}

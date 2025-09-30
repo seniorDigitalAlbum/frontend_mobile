@@ -7,11 +7,17 @@ export interface RelationshipRequest {
 
 export interface GuardianSeniorRelationship {
   id: number;
-  guardianId: number;
-  seniorId: number;
+  guardian: {
+    id: number;
+    nickname: string;
+    profileImageUrl?: string;
+  };
+  senior: {
+    id: number;
+    nickname: string;
+    profileImageUrl?: string;
+  };
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  guardianName?: string;
-  seniorName?: string;
   createdAt: string;
   updatedAt: string;
 }

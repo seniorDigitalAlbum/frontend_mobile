@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import DiaryLoading from '../components/DiaryLoading';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { useUser } from '../contexts/UserContext';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, apiClient } from '../config/api';
 import conversationApiService from '../services/api/conversationApiService';
 import { colors } from '../styles/commonStyles';
 
@@ -40,13 +40,8 @@ export default function Chat({ route, navigation }: Props) {
             }
 
             try {
-                const response = await fetch(`${API_BASE_URL}/api/conversations/${conversationId}/messages`);
-                if (response.ok) {
-                    const messages = await response.json();
-                    setChatHistory(messages);
-                } else {
-                    console.error('Failed to fetch chat messages:', response.status);
-                }
+                const messages = await apiClient.get(`/api/conversations/${conversationId}/messages`);
+                setChatHistory(messages);
             } catch (error) {
                 console.error('Error fetching chat messages:', error);
             } finally {

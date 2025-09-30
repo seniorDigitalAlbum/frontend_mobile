@@ -39,12 +39,13 @@ export default function GuardianMain({ navigation }: Props) {
             navigation.navigate('Login' as any);
         };
         
-        if (typeof window !== 'undefined') {
+        // React Native 환경에서는 window 객체가 다르게 동작할 수 있으므로 더 안전하게 체크
+        if (typeof window !== 'undefined' && window.addEventListener) {
             window.addEventListener('auth:logout', handleLogout);
         }
         
         return () => {
-            if (typeof window !== 'undefined') {
+            if (typeof window !== 'undefined' && window.removeEventListener) {
                 window.removeEventListener('auth:logout', handleLogout);
             }
         };
@@ -59,8 +60,8 @@ export default function GuardianMain({ navigation }: Props) {
             
             let seniors: SeniorInfo[] = [];
             
-            // 실제 API 호출 - 모든 시니어 (승인 절차 없이 바로 연결)
-            seniors = await guardianService.getAllSeniors(parseInt(user.id));
+            // 실제 API 호출 - 승인된 시니어만 조회
+            seniors = await guardianService.getConnectedSeniors(parseInt(user.id));
             console.log('전체 시니어 수:', seniors.length);
             
             setConnectedSeniors(seniors);
@@ -194,7 +195,7 @@ export default function GuardianMain({ navigation }: Props) {
                             시니어 앨범
                         </Text>
                         <Text className="text-lg" style={{ color: colors.darkGreen }}>
-                            {connectedSeniors.filter(s => s.connectionStatus === 'APPROVED').length}명의 시니어와 연결되어 있습니다
+                            {connectedSeniors.length}명의 시니어와 연결되어 있습니다
                         </Text>
                     </View>
 

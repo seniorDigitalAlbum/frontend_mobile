@@ -28,10 +28,16 @@ class GuardianService {
       
       return {
         success: true,
-        message: '연결 요청이 전송되었습니다. 시니어의 승인을 기다려주세요.'
+        message: '연결 요청이 완료되었습니다.'
       };
     } catch (error) {
       console.error('시니어 연결 실패:', error);
+      
+      // 백엔드 에러 메시지를 그대로 전달
+      if (error instanceof Error) {
+        throw error; // 에러를 다시 throw하여 호출하는 곳에서 처리할 수 있도록 함
+      }
+      
       return {
         success: false,
         message: '연결에 실패했습니다.'
@@ -44,16 +50,17 @@ class GuardianService {
    */
   async getConnectedSeniors(guardianId: number): Promise<SeniorInfo[]> {
     try {
-      const relationships = await apiClient.get<GuardianSeniorRelationship[]>(`/api/relationships/guardian/${guardianId}/approved`);
+      // 승인 여부와 상관없이 모든 관계 조회 (PENDING, APPROVED 모두 포함)
+      const relationships = await apiClient.get<GuardianSeniorRelationship[]>(`/api/relationships/guardian/${guardianId}`);
       
       // 관계 정보를 SeniorInfo 형태로 변환
       const seniors: SeniorInfo[] = relationships.map((rel) => ({
-        id: rel.seniorId,
-        name: rel.seniorName || '시니어',
+        id: rel.senior.id,
+        name: rel.senior.nickname || '시니어',
         phoneNumber: '',
-        profileImage: '',
+        profileImage: rel.senior.profileImageUrl || '',
         kakaoId: '',
-        connectionStatus: 'APPROVED' as const
+        connectionStatus: rel.status as const // 실제 상태 반영 (PENDING, APPROVED, REJECTED)
       }));
       
       return seniors;

@@ -85,11 +85,13 @@ export default function HiddenCamera({
 
     // 테스트 모드에서 1초마다 얼굴 인식 처리
     useEffect(() => {
+        let testTimer: NodeJS.Timeout | null = null;
+        
         if (isTestMode && permission?.status === 'granted') {
             console.log('📸 테스트 모드 - 1초마다 얼굴 인식 시작');
             
             const testFaceDetection = async () => {
-                if (cameraRef.current) {
+                if (cameraRef.current && isTestMode) {
                     try {
                         const photo = await cameraRef.current.takePictureAsync({
                             quality: 0.8,
@@ -129,7 +131,7 @@ export default function HiddenCamera({
                 
                 // 1초 후 다시 실행 (테스트 모드에서만)
                 if (isTestMode) {
-                    setTimeout(testFaceDetection, 1000);
+                    testTimer = setTimeout(testFaceDetection, 1000);
                 }
             };
             
@@ -139,6 +141,10 @@ export default function HiddenCamera({
         
         return () => {
             // 컴포넌트 언마운트 시 타이머 정리
+            if (testTimer) {
+                clearTimeout(testTimer);
+                testTimer = null;
+            }
             console.log('📸 테스트 모드 - 얼굴 인식 중단');
         };
     }, [isTestMode, permission]);
